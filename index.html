@@ -62,7 +62,7 @@
       margin-bottom: 8px;
     }
     .option-item input[type="radio"] {
-      display: none; /* 터치 버튼만 보이게 */
+      display: none;
     }
     .option-label {
       display: block;
@@ -107,7 +107,6 @@
 <body>
   <h1>기출문제 풀이 프로그램 (GitHub 자동 버전)</h1>
 
-  <!-- 1. GitHub /problems 폴더의 TXT 목록 자동 불러오기 -->
   <div class="card">
     <label>1️⃣ 문제집(TXT 파일) 선택</label>
     <select id="fileSelect" disabled>
@@ -119,7 +118,6 @@
     </div>
   </div>
 
-  <!-- 2. 문제 영역 -->
   <div class="card" id="questionCard" style="display:none;">
     <div class="status" id="progressStatus"></div>
     <div class="question-text" id="questionText"></div>
@@ -129,7 +127,6 @@
     <div class="status" id="answerStatus"></div>
   </div>
 
-  <!-- 3. 결과 & 오답노트 -->
   <div class="card" id="resultCard" style="display:none;">
     <h2>결과</h2>
     <div class="result" id="resultSummary"></div>
@@ -137,7 +134,6 @@
   </div>
 
   <script>
-    // ====== GitHub Repo 정보 ======
     const GITHUB_OWNER = 'eumditravel-oss';
     const GITHUB_REPO = 'Certification_Exam_Preparation';
     const GITHUB_BRANCH = 'main';
@@ -164,18 +160,15 @@
     let solvedCount = 0;
     let correctCount = 0;
     let wrongList = [];
-    let currentFileMeta = null; // {name, path}
+    let currentFileMeta = null;
 
-    // circled 숫자 → 일반 숫자 매핑 (①,②,③,④...)
     const CIRCLED_TO_NUM = {
       '①':1,'②':2,'③':3,'④':4,'⑤':5,'⑥':6,'⑦':7,'⑧':8,'⑨':9
     };
-
     function circledToNumber(ch) {
       return CIRCLED_TO_NUM[ch] || null;
     }
 
-    // ====== 1. /problems 폴더의 TXT 목록 자동 로드 ======
     async function loadProblemFilesList() {
       fileSelect.disabled = true;
       loadFileBtn.disabled = true;
@@ -185,9 +178,7 @@
 
       try {
         const res = await fetch(apiUrl, { cache: 'no-cache' });
-        if (!res.ok) {
-          throw new Error('HTTP ' + res.status);
-        }
+        if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
         const txtFiles = (Array.isArray(data) ? data : []).filter(
           item => item.type === 'file' && item.name.toLowerCase().endsWith('.txt')
@@ -208,7 +199,6 @@
           fileSelect.appendChild(opt);
         });
 
-        // 파일 메타 저장
         fileSelect.dataset.files = JSON.stringify(
           txtFiles.map(f => ({ name: f.name, path: f.path }))
         );
@@ -223,10 +213,8 @@
       }
     }
 
-    // 페이지 로드 시 자동 실행
     loadProblemFilesList();
 
-    // ====== 2. 선택한 TXT 파일 읽기 ======
     loadFileBtn.addEventListener('click', async () => {
       const filesMeta = JSON.parse(fileSelect.dataset.files || '[]');
       const idx = Number(fileSelect.value);
@@ -267,7 +255,6 @@
       }
     });
 
-    // ====== 3. TXT → 문제 파싱 ======
     function parseProblems(text) {
       const blocks = text
         .split(/\n\s*\n/g)
@@ -296,25 +283,39 @@
         const questionPart = lines.slice(0, answerLineIndex);
         if (questionPart.length === 0) continue;
 
-        const questionLine = questionPart[0];
-        const optionLines = questionPart.slice(1);
+        let questionLine = questionPart[0];
+        let optionLines = questionPart.slice(1);
 
-        const options = [];
+        let options = [];
+
         optionLines.forEach(l => {
-          // 1. "1. 보기", "1) 보기", "1 보기" 형식
           let m = l.match(/^(\d+)[\.\)\-\s]\s*(.+)$/);
           if (m) {
             options.push(m[2].trim());
             return;
           }
-          // 2. "① 보기" 같은 형식
           const firstChar = l.charAt(0);
           const num = circledToNumber(firstChar);
           if (num != null) {
             options.push(l.slice(1).trim());
             return;
           }
+          if (l.length > 0) {
+            options.push(l.trim());
+          }
         });
+
+        if (options.length === 0) {
+          const circledRegex = /[①②③④⑤⑥⑦⑧⑨]/;
+          if (circledRegex.test(block)) {
+            const parts = block.split(circledRegex).map(s => s.trim());
+            const inlineOptions = parts.slice(1).filter(s => s.length > 0);
+            if (inlineOptions.length >= 2) {
+              questionLine = parts[0];
+              options = inlineOptions;
+            }
+          }
+        }
 
         const isMultipleChoice = options.length > 0;
         let answer = answerRaw;
@@ -322,7 +323,6 @@
 
         if (isMultipleChoice) {
           answerType = 'objective';
-          // "정답: 2" or "정답: ②" 모두 처리
           let num = null;
           const numMatch = answerRaw.match(/(\d+)/);
           if (numMatch) {
@@ -347,7 +347,6 @@
       return parsed;
     }
 
-    // ====== 4. 현재 문제 표시 ======
     function showCurrentQuestion() {
       if (currentIndex < 0 || currentIndex >= problems.length) {
         showResult();
@@ -381,7 +380,6 @@
           label.className = 'option-label';
           label.textContent = `${idx + 1}. ${opt}`;
 
-          // 터치 시 선택 & 하이라이트
           label.addEventListener('click', () => {
             input.checked = true;
             document
@@ -407,7 +405,6 @@
       nextQuestionBtn.disabled = true;
     }
 
-    // ====== 5. 정답 제출 ======
     submitAnswerBtn.addEventListener('click', () => {
       if (currentIndex < 0 || currentIndex >= problems.length) return;
 
@@ -471,7 +468,6 @@
       }
     });
 
-    // ====== 6. 다음 문제 ======
     nextQuestionBtn.addEventListener('click', () => {
       if (currentIndex >= problems.length - 1) {
         showResult();
@@ -481,7 +477,6 @@
       showCurrentQuestion();
     });
 
-    // ====== 7. 결과 ======
     function showResult() {
       questionCard.style.display = 'none';
       resultCard.style.display = 'block';
@@ -503,7 +498,6 @@
       resultSummary.innerHTML = html;
     }
 
-    // ====== 8. 오답노트 TXT 다운로드 ======
     downloadWrongBtn.addEventListener('click', () => {
       if (wrongList.length === 0) {
         alert('오답이 없습니다.');
