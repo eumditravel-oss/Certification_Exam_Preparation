@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>기출문제 풀이 프로그램</title>
+  <title>기출문제 풀이</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     body {
@@ -27,7 +27,7 @@
       display: block;
       margin-bottom: 6px;
     }
-    select, button, input[type="text"] {
+    select, button, input[type="text"], input[type="number"] {
       font-size: 1rem;
       padding: 8px 10px;
       border-radius: 6px;
@@ -105,8 +105,9 @@
   </style>
 </head>
 <body>
-  <h1>기출문제 풀이 프로그램 (GitHub 자동 버전)</h1>
+  <h1>기출문제 풀이</h1>
 
+  <!-- 1. TXT 선택 + 문제 수 입력 -->
   <div class="card">
     <label>1️⃣ 문제집(TXT 파일) 선택</label>
     <select id="fileSelect" disabled>
@@ -116,8 +117,17 @@
     <div class="status" id="fileStatus">
       이 레포의 <code>/problems</code> 폴더에 .txt 파일을 올리면 여기 자동으로 목록이 뜹니다.
     </div>
+
+    <!-- 문제 수 입력 영역 (파일 불러온 후 표시) -->
+    <div id="questionCountArea" style="display:none; margin-top:10px;">
+      <label>2️⃣ 몇 문제 풀까요? (숫자로 입력)</label>
+      <input type="number" id="questionCountInput" min="1" step="1" />
+      <button id="startQuizBtn">풀기 시작</button>
+      <div class="status" id="questionCountStatus"></div>
+    </div>
   </div>
 
+  <!-- 2. 문제 영역 -->
   <div class="card" id="questionCard" style="display:none;">
     <div class="status" id="progressStatus"></div>
     <div class="question-text" id="questionText"></div>
@@ -127,6 +137,7 @@
     <div class="status" id="answerStatus"></div>
   </div>
 
+  <!-- 3. 결과 & 오답노트 -->
   <div class="card" id="resultCard" style="display:none;">
     <h2>결과</h2>
     <div class="result" id="resultSummary"></div>
@@ -134,6 +145,7 @@
   </div>
 
   <script>
+    // ====== GitHub Repo 정보 ======
     const GITHUB_OWNER = 'eumditravel-oss';
     const GITHUB_REPO = 'Certification_Exam_Preparation';
     const GITHUB_BRANCH = 'main';
@@ -142,6 +154,11 @@
     const fileSelect = document.getElementById('fileSelect');
     const loadFileBtn = document.getElementById('loadFileBtn');
     const fileStatus = document.getElementById('fileStatus');
+
+    const questionCountArea = document.getElementById('questionCountArea');
+    const questionCountInput = document.getElementById('questionCountInput');
+    const startQuizBtn = document.getElementById('startQuizBtn');
+    const questionCountStatus = document.getElementById('questionCountStatus');
 
     const questionCard = document.getElementById('questionCard');
     const questionTextEl = document.getElementById('questionText');
@@ -155,6 +172,8 @@
     const resultSummary = document.getElementById('resultSummary');
     const downloadWrongBtn = document.getElementById('downloadWrongBtn');
 
+    // 전체 문제(원본) / 실제 풀 문제(랜덤 선택 후)
+    let allProblems = [];
     let problems = [];
     let currentIndex = 0;
     let solvedCount = 0;
@@ -169,12 +188,14 @@
       return CIRCLED_TO_NUM[ch] || null;
     }
 
+    // ====== /problems 폴더 TXT 목록 로드 ======
     async function loadProblemFilesList() {
       fileSelect.disabled = true;
       loadFileBtn.disabled = true;
       fileSelect.innerHTML = '<option>TXT 목록을 불러오는 중...</option>';
 
-      const apiUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${PROBLEMS_PATH}?ref=${GITHUB_BRANCH}`;
+      const apiUrl =
+        `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${PROBLEMS_PATH}?ref=${GITHUB_BRANCH}`;
 
       try {
         const res = await fetch(apiUrl, { cache: 'no-cache' });
@@ -205,7 +226,8 @@
 
         fileSelect.disabled = false;
         loadFileBtn.disabled = false;
-        fileStatus.textContent = `총 ${txtFiles.length}개의 TXT 파일을 찾았습니다. 하나를 선택 후 [불러오기]를 눌러주세요.`;
+        fileStatus.textContent =
+          `총 ${txtFiles.length}개의 TXT 파일을 찾았습니다. 하나를 선택 후 [불러오기]를 눌러주세요.`;
       } catch (err) {
         console.error(err);
         fileSelect.innerHTML = '<option>목록을 불러올 수 없습니다.</option>';
@@ -215,6 +237,7 @@
 
     loadProblemFilesList();
 
+    // ====== 선택한 TXT 파일 읽기 ======
     loadFileBtn.addEventListener('click', async () => {
       const filesMeta = JSON.parse(fileSelect.dataset.files || '[]');
       const idx = Number(fileSelect.value);
@@ -232,30 +255,81 @@
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const text = await res.text();
 
-        problems = parseProblems(text);
+        allProblems = parseProblems(text);   // 전체 문제
+        problems = [];                       // 실제 풀 문제는 나중에 선택
         currentIndex = 0;
         solvedCount = 0;
         correctCount = 0;
         wrongList = [];
 
-        if (problems.length === 0) {
-          fileStatus.textContent = '이 TXT에서 인식된 문제가 없습니다. 형식을 확인해주세요.';
+        if (allProblems.length === 0) {
+          fileStatus.textContent =
+            '이 TXT에서 인식된 문제가 없습니다. 형식을 확인해주세요.';
           questionCard.style.display = 'none';
           resultCard.style.display = 'none';
+          questionCountArea.style.display = 'none';
           return;
         }
 
-        fileStatus.textContent = `${currentFileMeta.name} 에서 ${problems.length}문제를 불러왔습니다.`;
-        questionCard.style.display = 'block';
+        fileStatus.textContent =
+          `${currentFileMeta.name} 에서 총 ${allProblems.length}문제를 불러왔습니다. ` +
+          '아래에 풀 문제 수를 입력한 뒤 [풀기 시작]을 눌러주세요.';
+
+        questionCountArea.style.display = 'block';
+        questionCountInput.value = allProblems.length;
+        questionCountInput.max = allProblems.length;
+        questionCountStatus.textContent =
+          `최대 ${allProblems.length}문제까지 풀 수 있습니다.`;
+
+        questionCard.style.display = 'none';
         resultCard.style.display = 'none';
-        showCurrentQuestion();
       } catch (err) {
         console.error(err);
-        fileStatus.textContent = '파일을 읽는 중 오류가 발생했습니다: ' + err.message;
+        fileStatus.textContent =
+          '파일을 읽는 중 오류가 발생했습니다: ' + err.message;
+        questionCountArea.style.display = 'none';
       }
     });
 
-    // ====== 3. TXT → 문제 파싱 ======
+    // ====== 풀 문제 수 입력 후 시작 (랜덤 N문제) ======
+    startQuizBtn.addEventListener('click', () => {
+      if (!allProblems || allProblems.length === 0) {
+        alert('먼저 TXT 파일을 불러와 주세요.');
+        return;
+      }
+
+      let n = parseInt(questionCountInput.value, 10);
+      if (!Number.isFinite(n) || n <= 0) {
+        alert('1 이상의 숫자를 입력해 주세요.');
+        return;
+      }
+      if (n > allProblems.length) {
+        n = allProblems.length;
+      }
+
+      // 랜덤으로 N개 뽑기 (비복원 추출)
+      const indices = Array.from(allProblems.keys());
+      for (let i = indices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [indices[i], indices[j]] = [indices[j], indices[i]];
+      }
+      const picked = indices.slice(0, n);
+      problems = picked.map(i => allProblems[i]);
+
+      currentIndex = 0;
+      solvedCount = 0;
+      correctCount = 0;
+      wrongList = [];
+
+      questionCountStatus.textContent =
+        `총 ${allProblems.length}문제 중 랜덤으로 ${problems.length}문제를 선택했습니다.`;
+
+      questionCard.style.display = 'block';
+      resultCard.style.display = 'none';
+      showCurrentQuestion();
+    });
+
+    // ====== TXT → 문제 파싱 ======
     function parseProblems(text) {
       const blocks = text
         .split(/\n\s*\n/g)
@@ -310,7 +384,6 @@
         // 3) 1차 결과가 0~1개면 -> 한 줄에 "1) ... 2) ... 3) ... 4) ..." 형식인지 다시 검사
         if (options.length <= 1 && optionLines.length > 0) {
           const joined = optionLines.join(' ').replace(/\s+/g, ' ').trim();
-          // 1) 또는 ① 같은 마커 찾기
           const markerRegex = /(①|②|③|④|⑤|⑥|⑦|⑧|⑨|[1-9]\))/g;
           let markers = [];
           let match;
@@ -322,8 +395,10 @@
             const inlineOptions = [];
             for (let i = 0; i < markers.length; i++) {
               const start = markers[i].index + markers[i].token.length;
-              const end = i + 1 < markers.length ? markers[i + 1].index : joined.length;
-              const textPart = joined.slice(start, end).replace(/^[:\.\-\s]+/, '').trim();
+              const end =
+                i + 1 < markers.length ? markers[i + 1].index : joined.length;
+              const textPart =
+                joined.slice(start, end).replace(/^[:\.\-\s]+/, '').trim();
               if (textPart) inlineOptions.push(textPart);
             }
             if (inlineOptions.length >= 2) {
@@ -351,9 +426,8 @@
             answer = num;
           }
         } else {
-          // 보기 숫자 마커가 전혀 없으면 -> 완전 주관식으로 간주
+          // 번호 마커가 없으면 완전 주관식으로 간주
           answerType = 'subjective';
-          // answerRaw 그대로 문자열 비교 (공백 제거해서 비교함)
         }
 
         parsed.push({
@@ -368,7 +442,7 @@
       return parsed;
     }
 
-
+    // ====== 현재 문제 표시 ======
     function showCurrentQuestion() {
       if (currentIndex < 0 || currentIndex >= problems.length) {
         showResult();
@@ -380,7 +454,8 @@
       answerArea.innerHTML = '';
       answerStatus.textContent = '';
 
-      progressStatus.textContent = `문제 ${currentIndex + 1} / ${problems.length}`;
+      progressStatus.textContent =
+        `문제 ${currentIndex + 1} / ${problems.length}`;
 
       if (p.answerType === 'objective') {
         const container = document.createElement('div');
@@ -427,6 +502,7 @@
       nextQuestionBtn.disabled = true;
     }
 
+    // ====== 정답 제출 ======
     submitAnswerBtn.addEventListener('click', () => {
       if (currentIndex < 0 || currentIndex >= problems.length) return;
 
@@ -461,11 +537,14 @@
 
       if (isCorrect) {
         correctCount++;
-        answerStatus.innerHTML = '<span class="badge badge-ok">정답</span> 잘 풀었어요!';
+        answerStatus.innerHTML =
+          '<span class="badge badge-ok">정답</span> 잘 풀었어요!';
       } else {
         answerStatus.innerHTML =
           '<span class="badge badge-wrong">오답</span> 정답은 ' +
-          (p.answerType === 'objective' ? p.answer + '번' : String(p.answer)) +
+          (p.answerType === 'objective'
+            ? p.answer + '번'
+            : String(p.answer)) +
           ' 입니다.';
 
         wrongList.push({
@@ -490,6 +569,7 @@
       }
     });
 
+    // ====== 다음 문제 ======
     nextQuestionBtn.addEventListener('click', () => {
       if (currentIndex >= problems.length - 1) {
         showResult();
@@ -499,6 +579,7 @@
       showCurrentQuestion();
     });
 
+    // ====== 결과 ======
     function showResult() {
       questionCard.style.display = 'none';
       resultCard.style.display = 'block';
@@ -508,11 +589,15 @@
       const rate = total > 0 ? Math.round((correctCount / total) * 100) : 0;
 
       let html = '';
-      html += `<p>총 <strong>${total}</strong>문제 중 <strong>${correctCount}</strong>문제 정답, <strong>${wrongCount}</strong>문제 오답입니다.</p>`;
+      html += `<p>총 <strong>${total}</strong>문제 중 ` +
+              `<strong>${correctCount}</strong>문제 정답, ` +
+              `<strong>${wrongCount}</strong>문제 오답입니다.</p>`;
       html += `<p>정답률: <strong>${rate}%</strong></p>`;
 
       if (wrongList.length > 0) {
-        html += `<p>오답 목록은 [오답노트 다운로드] 버튼을 눌러 TXT 파일로 저장할 수 있습니다.</p>`;
+        html +=
+          `<p>오답 목록은 [오답노트 다운로드] 버튼을 눌러 ` +
+          `TXT 파일로 저장할 수 있습니다.</p>`;
       } else {
         html += `<p>오답이 없습니다. 아주 잘하셨어요!</p>`;
       }
@@ -520,6 +605,7 @@
       resultSummary.innerHTML = html;
     }
 
+    // ====== 오답노트 TXT 다운로드 ======
     downloadWrongBtn.addEventListener('click', () => {
       if (wrongList.length === 0) {
         alert('오답이 없습니다.');
@@ -555,7 +641,9 @@
         lines.push('');
       });
 
-      const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+      const blob = new Blob([lines.join('\n')], {
+        type: 'text/plain;charset=utf-8'
+      });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       const baseName = currentFileMeta
