@@ -89,16 +89,18 @@
   </style>
 </head>
 <body>
-  <h1>기출문제 풀이 프로그램 (웹앱)</h1>
+  <h1>기출문제 풀이 프로그램 (GitHub 자동 버전)</h1>
 
-  <!-- 1. GitHub에 올라간 TXT 목록 선택 -->
+  <!-- 1. GitHub /problems 폴더의 TXT 목록 자동 불러오기 -->
   <div class="card">
-    <label>1️⃣ 문제집(TXT 파일) 선택 (GitHub /problems 폴더)</label>
-    <select id="fileSelect">
-      <!-- 자바스크립트에서 채움 -->
+    <label>1️⃣ 문제집(TXT 파일) 선택</label>
+    <select id="fileSelect" disabled>
+      <option>TXT 목록을 불러오는 중...</option>
     </select>
-    <button id="loadFileBtn">선택한 TXT 파일 불러오기</button>
-    <div class="status" id="fileStatus">/problems 폴더에 올려둔 TXT를 선택하세요.</div>
+    <button id="loadFileBtn" disabled>선택한 TXT 파일 불러오기</button>
+    <div class="status" id="fileStatus">
+      이 레포의 <code>/problems</code> 폴더에 .txt 파일을 올리면 여기 자동으로 목록이 뜹니다.
+    </div>
   </div>
 
   <!-- 2. 문제 영역 -->
@@ -119,20 +121,11 @@
   </div>
 
   <script>
-    // ====== 0. 여기 배열에 GitHub에 올린 TXT 목록을 등록 ======
-    // file 경로는 레포 기준 상대경로
-    const PROBLEM_FILES = [
-      { label: '샘플 문제집 1', file: 'problems/sample1.txt' },
-      // 예: { label: '회계 11회', file: 'problems/accounting_11.txt' },
-      // 예: { label: '세무 기출', file: 'problems/tax_01.txt' },
-    ];
-
-    let currentFileMeta = null;
-    let problems = [];
-    let currentIndex = 0;
-    let solvedCount = 0;
-    let correctCount = 0;
-    let wrongList = [];
+    // ====== GitHub Repo 정보 (이 레포 기준으로 고정) ======
+    const GITHUB_OWNER = 'eumditravel-oss';
+    const GITHUB_REPO = 'Certification_Exam_Preparation';
+    const GITHUB_BRANCH = 'main';
+    const PROBLEMS_PATH = 'problems';
 
     const fileSelect = document.getElementById('fileSelect');
     const loadFileBtn = document.getElementById('loadFileBtn');
@@ -150,57 +143,120 @@
     const resultSummary = document.getElementById('resultSummary');
     const downloadWrongBtn = document.getElementById('downloadWrongBtn');
 
-    // 초기 셀렉트 옵션 채우기
-    function initFileSelect() {
-      fileSelect.innerHTML = '';
-      PROBLEM_FILES.forEach((f, idx) => {
-        const opt = document.createElement('option');
-        opt.value = idx;
-        opt.textContent = `${idx + 1}. ${f.label}`;
-        fileSelect.appendChild(opt);
-      });
-    }
-    initFileSelect();
+    let problems = [];
+    let currentIndex = 0;
+    let solvedCount = 0;
+    let correctCount = 0;
+    let wrongList = [];
+    let currentFileMeta = null; // {name, path}
 
-    // ====== TXT 불러오기 (GitHub /problems에서 fetch) ======
-    loadFileBtn.addEventListener('click', () => {
-      const idx = Number(fileSelect.value);
-      if (isNaN(idx) || !PROBLEM_FILES[idx]) return;
+    // ====== 1. /problems 폴더의 TXT 목록 자동 로드 ======
+    async function loadProblemFilesList() {
+      fileSelect.disabled = true;
+      loadFileBtn.disabled = true;
+      fileSelect.innerHTML = '<option>TXT 목록을 불러오는 중...</option>';
 
-      currentFileMeta = PROBLEM_FILES[idx];
-      fileStatus.textContent = `파일 읽는 중: ${currentFileMeta.file} ...`;
+      const apiUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${PROBLEMS_PATH}?ref=${GITHUB_BRANCH}`;
 
-      fetch(currentFileMeta.file, { cache: 'no-cache' })
-        .then(res => {
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          return res.text();
-        })
-        .then(text => {
-          problems = parseProblems(text);
-          currentIndex = 0;
-          solvedCount = 0;
-          correctCount = 0;
-          wrongList = [];
+      try {
+        const res = await fetch(apiUrl, { cache: 'no-cache' });
+        if (!res.ok) {
+          throw new Error('HTTP ' + res.status);
+        }
+        const data = await res.json();
+        const txtFiles = (Array.isArray(data) ? data : []).filter(
+          item => item.type === 'file' && item.name.toLowerCase().endsWith('.txt')
+        );
 
-          if (problems.length === 0) {
-            fileStatus.textContent = '이 TXT에서 인식된 문제가 없습니다. 형식을 확인해주세요.';
-            questionCard.style.display = 'none';
-            resultCard.style.display = 'none';
-            return;
-          }
+        if (txtFiles.length === 0) {
+          fileSelect.innerHTML = '<option>.txt 파일이 없습니다.</option>';
+          fileStatus.textContent = `/problems 폴더에 .txt 파일을 업로드하면 여기 나타납니다.`;
+          return;
+        }
 
-          fileStatus.textContent = `${currentFileMeta.label} 에서 ${problems.length}문제를 불러왔습니다.`;
-          questionCard.style.display = 'block';
-          resultCard.style.display = 'none';
-          showCurrentQuestion();
-        })
-        .catch(err => {
-          console.error(err);
-          fileStatus.textContent = '파일을 읽는 중 오류가 발생했습니다: ' + err.message;
+        fileSelect.innerHTML = '';
+        txtFiles.forEach((item, idx) => {
+          const opt = document.createElement('option');
+          opt.value = idx;
+          const label = item.name.replace(/\.txt$/i, '');
+          opt.textContent = `${idx + 1}. ${label}`;
+          fileSelect.appendChild(opt);
         });
+
+        // 파일 메타 저장
+        fileSelect.dataset.files = JSON.stringify(
+          txtFiles.map(f => ({ name: f.name, path: f.path }))
+        );
+
+        fileSelect.disabled = false;
+        loadFileBtn.disabled = false;
+        fileStatus.textContent = `총 ${txtFiles.length}개의 TXT 파일을 찾았습니다. 하나를 선택 후 [불러오기]를 눌러주세요.`;
+      } catch (err) {
+        console.error(err);
+        fileSelect.innerHTML = '<option>목록을 불러올 수 없습니다.</option>';
+        fileStatus.textContent = `GitHub API 요청 중 오류가 발생했습니다: ${err.message}`;
+      }
+    }
+
+    // 페이지 로드 시 자동 실행
+    loadProblemFilesList();
+
+    // ====== 2. 선택한 TXT 파일 읽기 (raw.githubusercontent.com 사용) ======
+    loadFileBtn.addEventListener('click', async () => {
+      const filesMeta = JSON.parse(fileSelect.dataset.files || '[]');
+      const idx = Number(fileSelect.value);
+      if (!filesMeta[idx]) return;
+
+      currentFileMeta = filesMeta[idx];
+      fileStatus.textContent = `파일 읽는 중: ${currentFileMeta.path} ...`;
+
+      const rawUrl =
+        `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/` +
+        encodeURI(currentFileMeta.path);
+
+      try {
+        const res = await fetch(rawUrl, { cache: 'no-cache' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const text = await res.text();
+
+        problems = parseProblems(text);
+        currentIndex = 0;
+        solvedCount = 0;
+        correctCount = 0;
+        wrongList = [];
+
+        if (problems.length === 0) {
+          fileStatus.textContent = '이 TXT에서 인식된 문제가 없습니다. 형식을 확인해주세요.';
+          questionCard.style.display = 'none';
+          resultCard.style.display = 'none';
+          return;
+        }
+
+        fileStatus.textContent = `${currentFileMeta.name} 에서 ${problems.length}문제를 불러왔습니다.`;
+        questionCard.style.display = 'block';
+        resultCard.style.display = 'none';
+        showCurrentQuestion();
+      } catch (err) {
+        console.error(err);
+        fileStatus.textContent = '파일을 읽는 중 오류가 발생했습니다: ' + err.message;
+      }
     });
 
-    // ====== 문제 파싱 ======
+    // ====== 3. TXT → 문제 파싱 ======
+    /**
+     * 블록 형식 예시:
+     *
+     * 문제: 다음 중 자산을 가장 잘 설명한 것은?
+     * 1. 보기1
+     * 2. 보기2
+     * 3. 보기3
+     * 4. 보기4
+     *
+     * 정답: 2
+     *
+     * 문제: 자산 = 부채 + (   ) 의 빈칸에 들어갈 단어는?
+     * 정답: 자본
+     */
     function parseProblems(text) {
       const blocks = text
         .split(/\n\s*\n/g)
@@ -215,6 +271,7 @@
 
         let answerLineIndex = -1;
         let answerRaw = '';
+
         lines.forEach((line, i) => {
           const m = line.match(/^정답\s*[:：]\s*(.+)$/);
           if (m) {
@@ -259,7 +316,7 @@
       return parsed;
     }
 
-    // ====== 현재 문제 표시 ======
+    // ====== 4. 현재 문제 표시 ======
     function showCurrentQuestion() {
       if (currentIndex < 0 || currentIndex >= problems.length) {
         showResult();
@@ -280,7 +337,7 @@
           const div = document.createElement('div');
           div.className = 'option-item';
 
-          const id = `opt_${currentIndex}_${idx+1}`;
+          const id = `opt_${currentIndex}_${idx + 1}`;
           const input = document.createElement('input');
           input.type = 'radio';
           input.name = 'option';
@@ -308,7 +365,7 @@
       nextQuestionBtn.disabled = true;
     }
 
-    // ====== 정답 제출 ======
+    // ====== 5. 정답 제출 ======
     submitAnswerBtn.addEventListener('click', () => {
       if (currentIndex < 0 || currentIndex >= problems.length) return;
 
@@ -351,7 +408,7 @@
           ' 입니다.';
 
         wrongList.push({
-          fileName: currentFileMeta ? currentFileMeta.file : '',
+          fileName: currentFileMeta ? currentFileMeta.path : '',
           index: currentIndex + 1,
           question: p.question,
           options: p.options,
@@ -372,7 +429,7 @@
       }
     });
 
-    // ====== 다음 문제 ======
+    // ====== 6. 다음 문제 ======
     nextQuestionBtn.addEventListener('click', () => {
       if (currentIndex >= problems.length - 1) {
         showResult();
@@ -382,7 +439,7 @@
       showCurrentQuestion();
     });
 
-    // ====== 결과 ======
+    // ====== 7. 결과 ======
     function showResult() {
       questionCard.style.display = 'none';
       resultCard.style.display = 'block';
@@ -404,7 +461,7 @@
       resultSummary.innerHTML = html;
     }
 
-    // ====== 오답노트 다운로드 ======
+    // ====== 8. 오답노트 TXT 다운로드 ======
     downloadWrongBtn.addEventListener('click', () => {
       if (wrongList.length === 0) {
         alert('오답이 없습니다.');
@@ -443,11 +500,11 @@
       const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      const fileBase = currentFileMeta
-        ? currentFileMeta.file.replace(/^problems\//, '').replace(/\.txt$/i, '')
+      const baseName = currentFileMeta
+        ? currentFileMeta.name.replace(/\.txt$/i, '')
         : '오답노트';
       a.href = url;
-      a.download = `${fileBase}_오답노트.txt`;
+      a.download = `${baseName}_오답노트.txt`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
