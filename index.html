@@ -255,6 +255,7 @@
       }
     });
 
+    // ====== 3. TXT → 문제 파싱 ======
     function parseProblems(text) {
       const blocks = text
         .split(/\n\s*\n/g)
@@ -267,6 +268,7 @@
         const lines = block.split('\n').map(l => l.trim()).filter(l => l !== '');
         if (lines.length === 0) continue;
 
+        // 1) 정답 줄 찾기
         let answerLineIndex = -1;
         let answerRaw = '';
 
@@ -286,43 +288,58 @@
         let questionLine = questionPart[0];
         let optionLines = questionPart.slice(1);
 
+        // 2) 보기 후보 1차: 라인별 패턴 (1. 보기, 1) 보기, ① 보기 등)
         let options = [];
 
         optionLines.forEach(l => {
+          // "1. 보기", "1) 보기", "1 보기" 등
           let m = l.match(/^(\d+)[\.\)\-\s]\s*(.+)$/);
           if (m) {
             options.push(m[2].trim());
             return;
           }
+          // "① 보기" 형식
           const firstChar = l.charAt(0);
           const num = circledToNumber(firstChar);
           if (num != null) {
             options.push(l.slice(1).trim());
             return;
           }
-          if (l.length > 0) {
-            options.push(l.trim());
-          }
         });
 
-        if (options.length === 0) {
-          const circledRegex = /[①②③④⑤⑥⑦⑧⑨]/;
-          if (circledRegex.test(block)) {
-            const parts = block.split(circledRegex).map(s => s.trim());
-            const inlineOptions = parts.slice(1).filter(s => s.length > 0);
+        // 3) 1차 결과가 0~1개면 -> 한 줄에 "1) ... 2) ... 3) ... 4) ..." 형식인지 다시 검사
+        if (options.length <= 1 && optionLines.length > 0) {
+          const joined = optionLines.join(' ').replace(/\s+/g, ' ').trim();
+          // 1) 또는 ① 같은 마커 찾기
+          const markerRegex = /(①|②|③|④|⑤|⑥|⑦|⑧|⑨|[1-9]\))/g;
+          let markers = [];
+          let match;
+          while ((match = markerRegex.exec(joined)) !== null) {
+            markers.push({ index: match.index, token: match[0] });
+          }
+
+          if (markers.length >= 2) {
+            const inlineOptions = [];
+            for (let i = 0; i < markers.length; i++) {
+              const start = markers[i].index + markers[i].token.length;
+              const end = i + 1 < markers.length ? markers[i + 1].index : joined.length;
+              const textPart = joined.slice(start, end).replace(/^[:\.\-\s]+/, '').trim();
+              if (textPart) inlineOptions.push(textPart);
+            }
             if (inlineOptions.length >= 2) {
-              questionLine = parts[0];
               options = inlineOptions;
             }
           }
         }
 
-        const isMultipleChoice = options.length > 0;
+        // 4) 객관식/주관식 판정
+        const isMultipleChoice = options.length > 1; // 최소 2개 이상이어야 객관식
         let answer = answerRaw;
         let answerType = 'subjective';
 
         if (isMultipleChoice) {
           answerType = 'objective';
+          // "정답: 2" 또는 "정답: ②" 등 처리
           let num = null;
           const numMatch = answerRaw.match(/(\d+)/);
           if (numMatch) {
@@ -333,6 +350,10 @@
           if (num != null) {
             answer = num;
           }
+        } else {
+          // 보기 숫자 마커가 전혀 없으면 -> 완전 주관식으로 간주
+          answerType = 'subjective';
+          // answerRaw 그대로 문자열 비교 (공백 제거해서 비교함)
         }
 
         parsed.push({
@@ -346,6 +367,7 @@
 
       return parsed;
     }
+
 
     function showCurrentQuestion() {
       if (currentIndex < 0 || currentIndex >= problems.length) {
