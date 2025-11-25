@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>기출문제 풀이 프로그램</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 16px;
+      background: #f5f5f5;
+    }
+    h1 {
+      font-size: 1.4rem;
+      margin-bottom: 10px;
+    }
+    .card {
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      margin-bottom: 16px;
+    }
+    label {
+      font-weight: 600;
+      display: block;
+      margin-bottom: 6px;
+    }
+    select, button, input[type="text"] {
+      font-size: 1rem;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 8px;
+    }
+    button {
+      cursor: pointer;
+      border: none;
+      background: #0070f3;
+      color: white;
+      font-weight: 600;
+    }
+    button.secondary {
+      background: #666;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: default;
+    }
+    .question-text {
+      margin-bottom: 12px;
+      white-space: pre-wrap;
+      line-height: 1.5;
+    }
+    .options {
+      margin-bottom: 12px;
+    }
+    .option-item {
+      margin-bottom: 6px;
+    }
+    .status {
+      font-size: 0.9rem;
+      color: #555;
+      margin-top: 6px;
+    }
+    .result {
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 0.8rem;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #eee;
+      margin-right: 6px;
+    }
+    .badge-ok {
+      background: #e3f7e3;
+      color: #1b7c1b;
+    }
+    .badge-wrong {
+      background: #ffe4e4;
+      color: #c23b3b;
+    }
+  </style>
+</head>
+<body>
+  <h1>기출문제 풀이 프로그램 (웹앱)</h1>
+
+  <!-- 1. 기출문제 폴더 선택 -->
+  <div class="card">
+    <label>1️⃣ 기출문제 폴더 선택 (로컬 TXT 파일들)</label>
+    <input id="folderInput" type="file" webkitdirectory multiple />
+    <div class="status" id="folderStatus">기출문제 폴더를 통째로 선택해주세요.</div>
+  </div>
+
+  <!-- 2. TXT 파일 선택 -->
+  <div class="card">
+    <label>2️⃣ 문제집(TXT 파일) 선택</label>
+    <select id="fileSelect" disabled>
+      <option>먼저 폴더를 선택하세요</option>
+    </select>
+    <button id="loadFileBtn" disabled>선택한 TXT 파일 불러오기</button>
+    <div class="status" id="fileStatus">아직 불러온 파일이 없습니다.</div>
+  </div>
+
+  <!-- 3. 문제 영역 -->
+  <div class="card" id="questionCard" style="display:none;">
+    <div class="status" id="progressStatus"></div>
+    <div class="question-text" id="questionText"></div>
+    <div id="answerArea"></div>
+    <button id="submitAnswerBtn">정답 제출</button>
+    <button id="nextQuestionBtn" class="secondary" disabled>다음 문제 ▶</button>
+    <div class="status" id="answerStatus"></div>
+  </div>
+
+  <!-- 4. 결과 & 오답노트 -->
+  <div class="card" id="resultCard" style="display:none;">
+    <h2>결과</h2>
+    <div class="result" id="resultSummary"></div>
+    <button id="downloadWrongBtn">오답노트 다운로드 (.txt)</button>
+  </div>
+
+  <script>
+    // ====== 전역 상태 ======
+    let txtFiles = [];               // 사용자가 선택한 폴더 안의 TXT 파일들
+    let currentFile = null;          // 현재 선택된 TXT File
+    let problems = [];               // 현재 파일에서 파싱한 전체 문제 목록
+    let currentIndex = 0;            // 현재 문제 인덱스
+    let solvedCount = 0;             // 풀고 제출한 문제 수
+    let correctCount = 0;            // 맞은 개수
+    let wrongList = [];              // 오답 리스트 (오답노트용)
+
+    const folderInput = document.getElementById('folderInput');
+    const folderStatus = document.getElementById('folderStatus');
+    const fileSelect = document.getElementById('fileSelect');
+    const fileStatus = document.getElementById('fileStatus');
+    const loadFileBtn = document.getElementById('loadFileBtn');
+
+    const questionCard = document.getElementById('questionCard');
+    const questionTextEl = document.getElementById('questionText');
+    const answerArea = document.getElementById('answerArea');
+    const submitAnswerBtn = document.getElementById('submitAnswerBtn');
+    const nextQuestionBtn = document.getElementById('nextQuestionBtn');
+    const answerStatus = document.getElementById('answerStatus');
+    const progressStatus = document.getElementById('progressStatus');
+
+    const resultCard = document.getElementById('resultCard');
+    const resultSummary = document.getElementById('resultSummary');
+    const downloadWrongBtn = document.getElementById('downloadWrongBtn');
+
+    // ====== 1. 폴더 선택 시 TXT 파일 목록 읽기 ======
+    folderInput.addEventListener('change', () => {
+      const files = Array.from(folderInput.files || []);
+      txtFiles = files.filter(f => f.name.toLowerCase().endsWith('.txt'));
+
+      if (txtFiles.length === 0) {
+        folderStatus.textContent = '선택한 폴더 안에 .txt 파일이 없습니다.';
+        fileSelect.innerHTML = '<option>.txt 파일 없음</option>';
+        fileSelect.disabled = true;
+        loadFileBtn.disabled = true;
+        return;
+      }
+
+      folderStatus.textContent = `총 ${txtFiles.length}개의 TXT 파일을 찾았습니다.`;
+      fileSelect.innerHTML = '';
+      txtFiles.forEach((f, idx) => {
+        const opt = document.createElement('option');
+        opt.value = idx;
+        opt.textContent = f.name;
+        fileSelect.appendChild(opt);
+      });
+      fileSelect.disabled = false;
+      loadFileBtn.disabled = false;
+      fileStatus.textContent = '사용할 문제집(TXT 파일)을 선택한 후 [불러오기]를 눌러주세요.';
+    });
+
+    // ====== 2. 선택한 TXT 파일 불러오기 ======
+    loadFileBtn.addEventListener('click', () => {
+      const idx = Number(fileSelect.value);
+      if (isNaN(idx) || !txtFiles[idx]) return;
+
+      currentFile = txtFiles[idx];
+      fileStatus.textContent = `파일 읽는 중: ${currentFile.name} ...`;
+
+      const reader = new FileReader();
+      reader.onload = e => {
+        const text = e.target.result;
+        problems = parseProblems(text);
+        currentIndex = 0;
+        solvedCount = 0;
+        correctCount = 0;
+        wrongList = [];
+
+        if (problems.length === 0) {
+          fileStatus.textContent = '이 TXT에서 인식된 문제가 없습니다. 형식을 확인해주세요.';
+          questionCard.style.display = 'none';
+          resultCard.style.display = 'none';
+          return;
+        }
+
+        fileStatus.textContent = `${currentFile.name} 에서 ${problems.length}문제를 불러왔습니다.`;
+        questionCard.style.display = 'block';
+        resultCard.style.display = 'none';
+        showCurrentQuestion();
+      };
+      reader.onerror = () => {
+        fileStatus.textContent = '파일을 읽는 중 오류가 발생했습니다.';
+      };
+      reader.readAsText(currentFile, 'utf-8');
+    });
+
+    // ====== 문제 파싱 로직 ======
+    /**
+     * 기대 형식 (예시)
+     *
+     * [객관식]
+     * 문제: 다음 중 OO에 대한 설명으로 옳은 것은?
+     * 1. 보기1
+     * 2. 보기2
+     * 3. 보기3
+     * 4. 보기4
+     * 정답: 2
+     *
+     * [주관식]
+     * 문제: 자산 = 부채 + (   ) 를 채우시오.
+     * 정답: 자본
+     *
+     * ▶ 실제 TXT에서는 "문제:" 대신 그냥 문장만 있어도 되고,
+     *   마지막 줄에 "정답:"만 있으면 동작하도록 유연하게 처리함.
+     */
+    function parseProblems(text) {
+      const blocks = text
+        .split(/\n\s*\n/g)   // 빈 줄(한 줄 이상) 기준으로 블럭 나누기
+        .map(b => b.trim())
+        .filter(b => b.length > 0);
+
+      const parsed = [];
+
+      for (const block of blocks) {
+        const lines = block.split('\n').map(l => l.trim()).filter(l => l !== '');
+        if (lines.length === 0) continue;
+
+        // 정답 줄 찾기 (예: "정답: 2" 또는 "정답 : 자본")
+        let answerLineIndex = -1;
+        let answerRaw = '';
+        lines.forEach((line, i) => {
+          const m = line.match(/^정답\s*[:：]\s*(.+)$/);
+          if (m) {
+            answerLineIndex = i;
+            answerRaw = m[1].trim();
+          }
+        });
+
+        if (answerLineIndex === -1) {
+          // 정답 줄이 없으면 문제로 인식하지 않음
+          continue;
+        }
+
+        // 정답 줄 제거
+        const questionPart = lines.slice(0, answerLineIndex);
+
+        if (questionPart.length === 0) continue;
+
+        const questionLine = questionPart[0];  // 첫 줄 = 문제문
+        const optionLines = questionPart.slice(1); // 나머지 줄들 중 숫자. 패턴이 있으면 보기로 인식
+
+        const options = [];
+        optionLines.forEach(l => {
+          const m = l.match(/^\d+\.\s*(.*)$/); // "1. 보기내용"
+          if (m) {
+            options.push(m[1].trim());
+          }
+        });
+
+        const isMultipleChoice = options.length > 0;
+        let answer = answerRaw;
+        let answerType = 'subjective';
+
+        if (isMultipleChoice) {
+          answerType = 'objective';
+          // 정답: 2  → 숫자로 인식
+          const numMatch = answerRaw.match(/^(\d+)/);
+          if (numMatch) {
+            answer = Number(numMatch[1]); // 1,2,3,4 중 하나
+          }
+        }
+
+        parsed.push({
+          question: questionLine,
+          options,
+          answer,
+          answerType,
+          rawBlock: block // 오답노트에 원문 블럭 보존
+        });
+      }
+
+      return parsed;
+    }
+
+    // ====== 현재 문제 표시 ======
+    function showCurrentQuestion() {
+      if (currentIndex < 0 || currentIndex >= problems.length) {
+        // 마지막까지 다 풀면 결과 표시
+        showResult();
+        return;
+      }
+
+      const p = problems[currentIndex];
+      questionTextEl.textContent = p.question;
+      answerArea.innerHTML = '';
+      answerStatus.textContent = '';
+
+      progressStatus.textContent = `문제 ${currentIndex + 1} / ${problems.length}`;
+
+      if (p.answerType === 'objective') {
+        // 객관식: 보기 라디오 버튼
+        const container = document.createElement('div');
+        container.className = 'options';
+        p.options.forEach((opt, idx) => {
+          const div = document.createElement('div');
+          div.className = 'option-item';
+
+          const id = `opt_${currentIndex}_${idx+1}`;
+          const input = document.createElement('input');
+          input.type = 'radio';
+          input.name = 'option';
+          input.value = String(idx + 1);
+          input.id = id;
+
+          const label = document.createElement('label');
+          label.setAttribute('for', id);
+          label.textContent = `${idx + 1}. ${opt}`;
+
+          div.appendChild(input);
+          div.appendChild(label);
+          container.appendChild(div);
+        });
+        answerArea.appendChild(container);
+      } else {
+        // 주관식: 텍스트 입력
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.id = 'subjectiveInput';
+        input.placeholder = '정답을 입력하세요';
+        answerArea.appendChild(input);
+      }
+
+      submitAnswerBtn.disabled = false;
+      nextQuestionBtn.disabled = true;
+    }
+
+    // ====== 정답 제출 ======
+    submitAnswerBtn.addEventListener('click', () => {
+      if (currentIndex < 0 || currentIndex >= problems.length) return;
+
+      const p = problems[currentIndex];
+      let userAnswer = null;
+
+      if (p.answerType === 'objective') {
+        const checked = document.querySelector('input[name="option"]:checked');
+        if (!checked) {
+          alert('보기를 선택해주세요.');
+          return;
+        }
+        userAnswer = Number(checked.value);
+      } else {
+        const input = document.getElementById('subjectiveInput');
+        if (!input || !input.value.trim()) {
+          alert('정답을 입력해주세요.');
+          return;
+        }
+        userAnswer = input.value.trim();
+      }
+
+      solvedCount++;
+      let isCorrect = false;
+
+      if (p.answerType === 'objective') {
+        isCorrect = (userAnswer === p.answer);
+      } else {
+        // 주관식: 아주 단순하게, 공백 제거 후 완전 일치 비교
+        const norm = s => s.replace(/\s+/g, '');
+        isCorrect = (norm(userAnswer) === norm(String(p.answer)));
+      }
+
+      if (isCorrect) {
+        correctCount++;
+        answerStatus.innerHTML = '<span class="badge badge-ok">정답</span> 잘 풀었어요!';
+      } else {
+        answerStatus.innerHTML =
+          '<span class="badge badge-wrong">오답</span> 정답은 ' +
+          (p.answerType === 'objective' ? p.answer + '번' : String(p.answer)) +
+          ' 입니다.';
+
+        // 오답노트용으로 저장
+        wrongList.push({
+          fileName: currentFile ? currentFile.name : '',
+          index: currentIndex + 1,
+          question: p.question,
+          options: p.options,
+          answerType: p.answerType,
+          correctAnswer: p.answer,
+          userAnswer,
+          rawBlock: p.rawBlock
+        });
+      }
+
+      submitAnswerBtn.disabled = true;
+      nextQuestionBtn.disabled = false;
+
+      if (currentIndex === problems.length - 1) {
+        nextQuestionBtn.textContent = '결과 보기';
+      } else {
+        nextQuestionBtn.textContent = '다음 문제 ▶';
+      }
+    });
+
+    // ====== 다음 문제 ======
+    nextQuestionBtn.addEventListener('click', () => {
+      if (currentIndex >= problems.length - 1) {
+        showResult();
+        return;
+      }
+      currentIndex++;
+      showCurrentQuestion();
+    });
+
+    // ====== 결과 화면 ======
+    function showResult() {
+      questionCard.style.display = 'none';
+      resultCard.style.display = 'block';
+
+      const total = problems.length;
+      const wrongCount = total - correctCount;
+      const rate = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+
+      let html = '';
+      html += `<p>총 <strong>${total}</strong>문제 중 <strong>${correctCount}</strong>문제 정답, <strong>${wrongCount}</strong>문제 오답입니다.</p>`;
+      html += `<p>정답률: <strong>${rate}%</strong></p>`;
+
+      if (wrongList.length > 0) {
+        html += `<p>오답 목록은 [오답노트 다운로드] 버튼을 눌러 TXT 파일로 저장할 수 있습니다.</p>`;
+      } else {
+        html += `<p>오답이 없습니다. 아주 잘하셨어요!</p>`;
+      }
+
+      resultSummary.innerHTML = html;
+    }
+
+    // ====== 오답노트 TXT 다운로드 ======
+    downloadWrongBtn.addEventListener('click', () => {
+      if (wrongList.length === 0) {
+        alert('오답이 없습니다.');
+        return;
+      }
+
+      let lines = [];
+      lines.push(`▶ 오답노트 생성시각: ${new Date().toLocaleString()}`);
+      lines.push('');
+
+      wrongList.forEach(item => {
+        lines.push('----------------------------------------');
+        if (item.fileName) {
+          lines.push(`[파일] ${item.fileName}`);
+        }
+        lines.push(`[문제번호] ${item.index}`);
+        lines.push('[문제]');
+        lines.push(item.question);
+        if (item.options && item.options.length > 0) {
+          lines.push('[보기]');
+          item.options.forEach((opt, idx) => {
+            lines.push(`  ${idx + 1}. ${opt}`);
+          });
+        }
+        lines.push(`[나의 답] ${item.userAnswer}`);
+        lines.push(
+          `[정답] ${
+            item.answerType === 'objective'
+              ? item.correctAnswer + '번'
+              : String(item.correctAnswer)
+          }`
+        );
+        lines.push('');
+      });
+
+      const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const fileBase = currentFile ? currentFile.name.replace(/\.txt$/i, '') : '오답노트';
+      a.href = url;
+      a.download = `${fileBase}_오답노트.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+  </script>
+</body>
+</html>
