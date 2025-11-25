@@ -59,7 +59,23 @@
       margin-bottom: 12px;
     }
     .option-item {
-      margin-bottom: 6px;
+      margin-bottom: 8px;
+    }
+    .option-item input[type="radio"] {
+      display: none; /* 터치 버튼만 보이게 */
+    }
+    .option-label {
+      display: block;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      background: #fafafa;
+      transition: background 0.15s, border-color 0.15s;
+      cursor: pointer;
+    }
+    .option-label.selected {
+      border-color: #0070f3;
+      background: #e6f0ff;
     }
     .status {
       font-size: 0.9rem;
@@ -121,7 +137,7 @@
   </div>
 
   <script>
-    // ====== GitHub Repo 정보 (이 레포 기준으로 고정) ======
+    // ====== GitHub Repo 정보 ======
     const GITHUB_OWNER = 'eumditravel-oss';
     const GITHUB_REPO = 'Certification_Exam_Preparation';
     const GITHUB_BRANCH = 'main';
@@ -149,6 +165,15 @@
     let correctCount = 0;
     let wrongList = [];
     let currentFileMeta = null; // {name, path}
+
+    // circled 숫자 → 일반 숫자 매핑 (①,②,③,④...)
+    const CIRCLED_TO_NUM = {
+      '①':1,'②':2,'③':3,'④':4,'⑤':5,'⑥':6,'⑦':7,'⑧':8,'⑨':9
+    };
+
+    function circledToNumber(ch) {
+      return CIRCLED_TO_NUM[ch] || null;
+    }
 
     // ====== 1. /problems 폴더의 TXT 목록 자동 로드 ======
     async function loadProblemFilesList() {
@@ -201,7 +226,7 @@
     // 페이지 로드 시 자동 실행
     loadProblemFilesList();
 
-    // ====== 2. 선택한 TXT 파일 읽기 (raw.githubusercontent.com 사용) ======
+    // ====== 2. 선택한 TXT 파일 읽기 ======
     loadFileBtn.addEventListener('click', async () => {
       const filesMeta = JSON.parse(fileSelect.dataset.files || '[]');
       const idx = Number(fileSelect.value);
@@ -243,20 +268,6 @@
     });
 
     // ====== 3. TXT → 문제 파싱 ======
-    /**
-     * 블록 형식 예시:
-     *
-     * 문제: 다음 중 자산을 가장 잘 설명한 것은?
-     * 1. 보기1
-     * 2. 보기2
-     * 3. 보기3
-     * 4. 보기4
-     *
-     * 정답: 2
-     *
-     * 문제: 자산 = 부채 + (   ) 의 빈칸에 들어갈 단어는?
-     * 정답: 자본
-     */
     function parseProblems(text) {
       const blocks = text
         .split(/\n\s*\n/g)
@@ -290,8 +301,19 @@
 
         const options = [];
         optionLines.forEach(l => {
-          const m = l.match(/^\d+\.\s*(.*)$/);
-          if (m) options.push(m[1].trim());
+          // 1. "1. 보기", "1) 보기", "1 보기" 형식
+          let m = l.match(/^(\d+)[\.\)\-\s]\s*(.+)$/);
+          if (m) {
+            options.push(m[2].trim());
+            return;
+          }
+          // 2. "① 보기" 같은 형식
+          const firstChar = l.charAt(0);
+          const num = circledToNumber(firstChar);
+          if (num != null) {
+            options.push(l.slice(1).trim());
+            return;
+          }
         });
 
         const isMultipleChoice = options.length > 0;
@@ -300,8 +322,17 @@
 
         if (isMultipleChoice) {
           answerType = 'objective';
-          const numMatch = answerRaw.match(/^(\d+)/);
-          if (numMatch) answer = Number(numMatch[1]);
+          // "정답: 2" or "정답: ②" 모두 처리
+          let num = null;
+          const numMatch = answerRaw.match(/(\d+)/);
+          if (numMatch) {
+            num = Number(numMatch[1]);
+          } else {
+            num = circledToNumber(answerRaw.trim().charAt(0));
+          }
+          if (num != null) {
+            answer = num;
+          }
         }
 
         parsed.push({
@@ -333,6 +364,7 @@
       if (p.answerType === 'objective') {
         const container = document.createElement('div');
         container.className = 'options';
+
         p.options.forEach((opt, idx) => {
           const div = document.createElement('div');
           div.className = 'option-item';
@@ -346,7 +378,17 @@
 
           const label = document.createElement('label');
           label.setAttribute('for', id);
+          label.className = 'option-label';
           label.textContent = `${idx + 1}. ${opt}`;
+
+          // 터치 시 선택 & 하이라이트
+          label.addEventListener('click', () => {
+            input.checked = true;
+            document
+              .querySelectorAll('.option-label')
+              .forEach(el => el.classList.remove('selected'));
+            label.classList.add('selected');
+          });
 
           div.appendChild(input);
           div.appendChild(label);
