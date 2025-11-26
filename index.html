@@ -802,69 +802,87 @@
        키워드별 풀기
     ===================================== */
     keywordQuizBtn.addEventListener("click", () => {
-      if (!keywordMap) {
-        alert("키워드가 없습니다.");
-        return;
-      }
-      const allKeys = Object.keys(keywordMap);
-      if (!allKeys.length) {
-        alert("사용 가능한 키워드가 없습니다.");
-        return;
-      }
+  if (!keywordMap) {
+    alert("키워드가 없습니다.");
+    return;
+  }
+  const allKeys = Object.keys(keywordMap);
+  if (!allKeys.length) {
+    alert("사용 가능한 키워드가 없습니다.");
+    return;
+  }
 
-      const selectedInputs = Array.from(
-        document.querySelectorAll('input[name="keywordCandidate"]:checked')
-      );
-      const selectedKeys = selectedInputs.map(el => el.value);
+  // 체크된 키워드 수집
+  const selectedInputs = Array.from(
+    document.querySelectorAll('input[name="keywordCandidate"]:checked')
+  );
+  const selectedKeys = selectedInputs.map(el => el.value);
 
-      if (!selectedKeys.length) {
-        alert("키워드를 선택해주세요.");
-        return;
-      }
+  if (!selectedKeys.length) {
+    alert("키워드를 선택해주세요.");
+    return;
+  }
 
-      const key = selectedKeys[Math.floor(Math.random() * selectedKeys.length)];
-      const indices = [...keywordMap[key]];
+  // ✅ 선택한 키워드들의 문제 인덱스 '합집합' 만들기 (중복 제거)
+  const idxSet = new Set();
+  selectedKeys.forEach(key => {
+    const arr = keywordMap[key] || [];
+    arr.forEach(i => idxSet.add(i));
+  });
 
-      if (!indices.length) {
-        alert("이 키워드로는 문제가 없습니다.");
-        return;
-      }
+  const indices = Array.from(idxSet);
+  if (!indices.length) {
+    alert("선택한 키워드들에 해당하는 문제가 없습니다.");
+    return;
+  }
 
-      for (let i = indices.length - 1; i > 0; i--) {
-        const k = Math.floor(Math.random() * (i + 1));
-        [indices[i], indices[k]] = [indices[k], indices[i]];
-      }
+  // 섞기 (셔플)
+  for (let i = indices.length - 1; i > 0; i--) {
+    const k = Math.floor(Math.random() * (i + 1));
+    [indices[i], indices[k]] = [indices[k], indices[i]];
+  }
 
-      const maxN = indices.length;
-      let inputStr = prompt(
-        `키워드 "${key}" 관련 문제는 ${maxN}개입니다.\n몇 문제 풀까요? (1~${maxN})`,
-        Math.min(10, maxN)
-      );
+  const maxN = indices.length;
 
-      if (inputStr === null) {
-        alert("키워드별 풀기 취소됨.");
-        currentKeyword = null;
-        return;
-      }
+  // ✅ 전체 합계 기준으로 범위 표시
+  const labelForPrompt =
+    selectedKeys.length === 1
+      ? `"${selectedKeys[0]}"`
+      : `"${selectedKeys[0]}" 외 ${selectedKeys.length - 1}개`;
 
-      let n = parseInt(inputStr, 10);
-      if (!isFinite(n) || n <= 0) n = maxN;
-      if (n > maxN) n = maxN;
+  let inputStr = prompt(
+    `선택한 키워드 ${labelForPrompt} 관련 문제는 총 ${maxN}개입니다.\n몇 문제 풀까요? (1~${maxN})`,
+    Math.min(10, maxN)
+  );
 
-      problems = indices.slice(0, n).map(i => allProblems[i]);
+  if (inputStr === null) {
+    alert("키워드별 풀기가 취소되었습니다.");
+    currentKeyword = null;
+    return;
+  }
 
-      currentIndex = 0;
-      correctCount = 0;
-      solvedCount = 0;
-      wrongList = [];
-      currentKeyword = key;
+  let n = parseInt(inputStr, 10);
+  if (!isFinite(n) || n <= 0) n = maxN;
+  if (n > maxN) n = maxN;
 
-      setupCard.style.display = "none";
-      questionCard.style.display = "block";
-      resultCard.style.display = "none";
+  // n개만 사용
+  problems = indices.slice(0, n).map(i => allProblems[i]);
 
-      showCurrentQuestion();
-    });
+  currentIndex = 0;
+  correctCount = 0;
+  solvedCount = 0;
+  wrongList = [];
+
+  // 결과 화면에서 어떤 키워드 세트인지 표시용
+  currentKeyword =
+    selectedKeys.length === 1 ? selectedKeys[0] : selectedKeys.join(", ");
+
+  setupCard.style.display = "none";
+  questionCard.style.display = "block";
+  resultCard.style.display = "none";
+
+  showCurrentQuestion();
+});
 
     /* =====================================
        정답 제출
