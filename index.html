@@ -182,817 +182,912 @@
     <button id="downloadWrongBtn">오답노트 다운로드 (.txt)</button>
     <button id="restartBtn" class="secondary" style="margin-top:8px;">처음으로</button>
   </div>
-<script>
-/* ================================
-   GitHub 리포 설정
-================================ */
-const GITHUB_OWNER  = 'eumditravel-oss';
-const GITHUB_REPO   = 'Certification_Exam_Preparation';
-const GITHUB_BRANCH = 'main';
-const PROBLEMS_PATH = 'problems';
 
-/* ================================
-   DOM 요소
-================================ */
-let setupCard;
-let fileSelect, loadFileBtn, fileStatus;
-let questionCountArea, questionCountInput, startQuizBtn, questionCountStatus;
-let keywordQuizBtn, keywordStatus;
-let keywordSelectArea, keywordListEl, keywordHint;
+  <script>
+  /* ================================
+     GitHub 리포 설정
+  ================================ */
+  const GITHUB_OWNER  = 'eumditravel-oss';
+  const GITHUB_REPO   = 'Certification_Exam_Preparation';
+  const GITHUB_BRANCH = 'main';
+  const PROBLEMS_PATH = 'problems';
 
-let questionCard, questionTextEl, answerArea, submitAnswerBtn, nextQuestionBtn, answerStatus, progressStatus;
-let resultCard, resultSummary, downloadWrongBtn, restartBtn;
+  /* ================================
+     DOM 요소
+  ================================ */
+  let setupCard;
+  let fileSelect, loadFileBtn, fileStatus;
+  let questionCountArea, questionCountInput, startQuizBtn, questionCountStatus;
+  let keywordQuizBtn, keywordStatus;
+  let keywordSelectArea, keywordListEl, keywordHint;
 
-/* ================================
-   상태 변수
-================================ */
-let allProblems = [];
-let problems = [];
-let currentIndex = 0;
-let solvedCount = 0;
-let correctCount = 0;
-let wrongList = [];
-let currentFileMeta = null;
-let keywordMap = null;
-let currentKeyword = null;
+  let questionCard, questionTextEl, answerArea, submitAnswerBtn, nextQuestionBtn, answerStatus, progressStatus;
+  let resultCard, resultSummary, downloadWrongBtn, restartBtn;
 
-// 한 키워드 최소 문제 개수
-const MIN_KEYWORD_QUESTIONS = 3;
+  /* ================================
+     상태 변수
+  ================================ */
+  let allProblems = [];
+  let problems = [];
+  let currentIndex = 0;
+  let solvedCount = 0;
+  let correctCount = 0;
+  let wrongList = [];
+  let currentFileMeta = null;
+  let keywordMap = null;
+  let currentKeyword = null;
 
-/* ================================
-   동그라미 숫자 파싱
-================================ */
-const CIRCLED_TO_NUM = {
-  '①':1,'②':2,'③':3,'④':4,'⑤':5,'⑥':6,'⑦':7,'⑧':8,'⑨':9
-};
-function circledToNumber(ch) {
-  return CIRCLED_TO_NUM[ch] || null;
-}
+  // 한 키워드 최소 문제 개수
+  const MIN_KEYWORD_QUESTIONS = 3;
 
-/* ================================
-   문제 텍스트 포맷팅 (자료 박스/표 변환)
-================================ */
-function formatQuestionText(q) {
-  if (!q) return '';
-  let html = q;
+  /* ================================
+     동그라미 숫자 파싱
+  ================================ */
+  const CIRCLED_TO_NUM = {
+    '①':1,'②':2,'③':3,'④':4,'⑤':5,'⑥':6,'⑦':7,'⑧':8,'⑨':9
+  };
+  function circledToNumber(ch) {
+    return CIRCLED_TO_NUM[ch] || null;
+  }
 
-  // [[...]] → 표
-  html = html.replace(/\[\[([\s\S]*?)\]\]/g, function(_, inner) {
-    const rows = inner.split(/\n/).map(r => r.trim()).filter(r => r);
-    if (!rows.length) return '';
-    const trHtml = rows.map((row, idx) => {
-      const cells = row.split(/\s*\|\s*/).map(c => c.trim());
-      const tag = idx === 0 ? 'th' : 'td';
-      return (
-        '<tr>' +
-        cells
-          .map(c => `<${tag} style="border:1px solid #999;padding:4px 8px;text-align:center;">${c}</${tag}>`)
-          .join('') +
-        '</tr>'
-      );
-    }).join('');
-    return `<br><table style="border-collapse:collapse;margin:6px 0;font-size:0.9rem;"><tbody>${trHtml}</tbody></table><br>`;
-  });
+  /* ================================
+     문제 텍스트 포맷팅 (자료 박스/표 변환)
+  ================================ */
+  function formatQuestionText(q) {
+    if (!q) return '';
+    let html = q;
 
-  // [...] → 자료 박스
-  html = html.replace(/\[([\s\S]*?)\]/g, function(_, inner) {
-    const parts = inner.split(/\s*\/\s*/).map(p => p.trim()).filter(p => p);
-    if (!parts.length) return _;
-    const items = parts.map(p => `<div style="margin:2px 0;">· ${p}</div>`).join('');
-    return `
-      <br>
-      <div style="display:inline-block;padding:8px 12px;border:1px solid #555;border-radius:4px;background:#fafafa;margin:4px 0;">
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));column-gap:32px;">
-          ${items}
+    // [[...]] → 표
+    html = html.replace(/\[\[([\s\S]*?)\]\]/g, function(_, inner) {
+      const rows = inner.split(/\n/).map(r => r.trim()).filter(r => r);
+      if (!rows.length) return '';
+      const trHtml = rows.map((row, idx) => {
+        const cells = row.split(/\s*\|\s*/).map(c => c.trim());
+        const tag = idx === 0 ? 'th' : 'td';
+        return (
+          '<tr>' +
+          cells
+            .map(c => `<${tag} style="border:1px solid #999;padding:4px 8px;text-align:center;">${c}</${tag}>`)
+            .join('') +
+          '</tr>'
+        );
+      }).join('');
+      return `<br><table style="border-collapse:collapse;margin:6px 0;font-size:0.9rem;"><tbody>${trHtml}</tbody></table><br>`;
+    });
+
+    // [...] → 자료 박스
+    html = html.replace(/\[([\s\S]*?)\]/g, function(_, inner) {
+      const parts = inner.split(/\s*\/\s*/).map(p => p.trim()).filter(p => p);
+      if (!parts.length) return _;
+      const items = parts.map(p => `<div style="margin:2px 0;">· ${p}</div>`).join('');
+      return `
+        <br>
+        <div style="display:inline-block;padding:8px 12px;border:1px solid #555;border-radius:4px;background:#fafafa;margin:4px 0;">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));column-gap:32px;">
+            ${items}
+          </div>
         </div>
-      </div>
-      <br>`;
-  });
-
-  return html.replace(/\n/g, '<br>');
-}
-
-/* ================================
-   TXT → 문제 파싱
-================================ */
-function parseProblems(text) {
-  const blocks = text
-    .split(/\n\s*\n/g)
-    .map(b => b.trim())
-    .filter(b => b.length > 0);
-
-  const parsed = [];
-
-  blocks.forEach(block => {
-    const lines = block.split('\n')
-      .map(l => l.trim())
-      .filter(l => l !== '');
-
-    if (!lines.length) return;
-
-    let answerIdx = -1;
-    let answerRaw = '';
-    let explanation = '';
-
-    // 정답 라인 찾기
-    lines.forEach((line, i) => {
-      const m = line.match(/^정답\s*[:：]\s*(.+)$/);
-      if (m) {
-        answerIdx = i;
-        const ansPart = m[1].trim();
-
-        const expMatch = ansPart.match(/해설\s*[:：]\s*(.+)$/);
-        if (expMatch) {
-          explanation = expMatch[1].trim();
-          answerRaw = ansPart.slice(0, expMatch.index).trim();
-        } else {
-          answerRaw = ansPart;
-        }
-      }
+        <br>`;
     });
 
-    if (answerIdx === -1) return;
-
-    // 해설이 별도로 있는 경우
-    if (!explanation && answerIdx + 1 < lines.length) {
-      const nxt = lines[answerIdx + 1];
-      const m2 = nxt.match(/^해설\s*[:：]\s*(.+)$/);
-      if (m2) {
-        explanation = m2[1].trim();
-      } else {
-        const rest = lines.slice(answerIdx + 1).join('\n').trim();
-        if (rest) explanation = rest;
-      }
-    }
-
-    const questionPart = lines.slice(0, answerIdx);
-    if (!questionPart.length) return;
-
-    const questionLine = questionPart[0];
-    const optionLines = questionPart.slice(1);
-
-    // 보기 파싱
-    let options = [];
-
-    // 줄 단위 1)
-    optionLines.forEach(l => {
-      const m = l.match(/^(\d+)[\.\)\-\s]\s*(.+)$/);
-      if (m) {
-        options.push(m[2].trim());
-        return;
-      }
-      const first = l.charAt(0);
-      const num = circledToNumber(first);
-      if (num != null) {
-        options.push(l.slice(1).trim());
-      }
-    });
-
-    // 한 줄 속성 1) 2) 3)
-    if (options.length <= 1 && optionLines.length > 0) {
-      const joined = optionLines.join(' ').replace(/\s+/g, ' ').trim();
-      const markReg = /(①|②|③|④|⑤|⑥|⑦|⑧|⑨|[1-9]\))/g;
-
-      let markers = [];
-      let m;
-      while ((m = markReg.exec(joined)) !== null) {
-        markers.push({ index: m.index, token: m[0] });
-      }
-
-      if (markers.length >= 2) {
-        let inline = [];
-        for (let i = 0; i < markers.length; i++) {
-          const start = markers[i].index + markers[i].token.length;
-          const end = i + 1 < markers.length ? markers[i+1].index : joined.length;
-          const txt = joined.slice(start, end).replace(/^[:\.\-\s]+/, '').trim();
-          if (txt) inline.push(txt);
-        }
-        if (inline.length >= 2) options = inline;
-      }
-    }
-
-    // 정답 판별
-    let answerType = 'subjective';
-    let answer = answerRaw;
-
-    if (options.length > 1) {
-      answerType = 'objective';
-      let nm = answerRaw.match(/(\d+)/);
-      if (nm) {
-        answer = Number(nm[1]);
-      } else {
-        const c = circledToNumber(answerRaw.trim().charAt(0));
-        if (c != null) answer = c;
-      }
-    }
-
-    parsed.push({
-      question: questionLine,
-      options,
-      answer,
-      answerType,
-      explanation,
-      rawBlock: block
-    });
-  });
-
-  return parsed;
-}
-
-/* ================================
-   키워드 후보 추출 (STOPWORDS 적용)
-================================ */
-function buildKeywordCandidates(problems) {
-  const stopWords = new Set([
-    '다음','다음의','다음중','다음중에서','다음은','다음에','다음사항','중','다','것은','어느','옳은',
-    '옳지','않은','아닌','설명으로','설명','관련된','관련하여','가장','보기','대한','및','또는','있는',
-    '없는','사항','기출','문제','하며','주를','에서','으로','그리고','또한','때문에','통해','인해',
-    '하여','하는','하기','되어','되어야','이때','이는','그때','예를','들어','등의','경우','다음과',
-    '같은','경우에','있어','있다','있으며',
-    '않는','않는다','아니다','아니라','이다','이며','하고','위해','위한','따라','따른','따라서',
-    '것으로','것이다','것을','해당한다','해당하는','해당하지','관련','관련한','관련이','등을','같다',
-    '다른','의한','의하여','이용하여','사용하여','사용하는','사용할','사용','말과','일에','일부를',
-    '이후','기간의','기간에','시점에','시점의','일정','일정시점을','순으로','기준으로','기준',
-    '적용','적용할','적용하는','추가','변동','변동이','변동은','변하지','이루어진','되는','것이므로',
-    '무관하다','나타나는','나타날','보여주는','중에서','중인','포함되지','포함된다','일시적으로',
-    '먼저','보다','아직','이미','모두','일반적인','일반적으로','적절하지','필요한','필수','가능한',
-    '즉시','함께','없다','없으므로','어떤','어떻게','포함','그리고','왜','또한'
-  ]);
-
-  let map = {};
-
-  problems.forEach((p, idx) => {
-    const base = (p.question || '') + ' ' + (p.explanation || '');
-    const cleaned = base
-      .replace(/[0-9\(\)\[\]\{\}\.,\/\\\-\+:%=<>]/g, ' ')
-      .replace(/[·•∙ㆍ]/g, ' ')
-      .replace(/\s+/g, ' ');
-
-    const tokens = cleaned
-      .split(' ')
-      .map(t => t.trim())
-      .filter(t => t.length >= 2);
-
-    const seen = new Set();
-
-    tokens.forEach(word => {
-      if (!/^[가-힣]+$/.test(word)) return;
-      if (stopWords.has(word)) return;
-      if (seen.has(word)) return;
-
-      seen.add(word);
-      if (!map[word]) map[word] = [];
-      map[word].push(idx);
-    });
-  });
-
-  // 최소 문제수 미달 키워드 제거
-  Object.keys(map).forEach(k => {
-    if (map[k].length < MIN_KEYWORD_QUESTIONS) delete map[k];
-  });
-
-  return map;
-}
-
-/* ================================
-   키워드 리스트 렌더링
-================================ */
-function renderKeywordList(keywordMap) {
-  keywordListEl.innerHTML = '';
-
-  const keys = Object.keys(keywordMap || {});
-  if (!keys.length) {
-    keywordSelectArea.style.display = 'none';
-    keywordStatus.textContent = '사용 가능한 키워드가 없습니다.';
-    keywordQuizBtn.disabled = true;
-    return;
+    return html.replace(/\n/g, '<br>');
   }
 
-  keys.sort((a,b) => keywordMap[b].length - keywordMap[a].length);
+  /* ================================
+     TXT → 문제 파싱
+  ================================ */
+  function parseProblems(text) {
+    const blocks = text
+      .split(/\n\s*\n/g)
+      .map(b => b.trim())
+      .filter(b => b.length > 0);
 
-  keys.forEach(key => {
-    const cnt = keywordMap[key].length;
-    const label = document.createElement('label');
-    const chk = document.createElement('input');
-    chk.type = 'checkbox';
-    chk.value = key;
-    chk.checked = true;
+    const parsed = [];
 
-    const txt = document.createElement('span');
-    txt.textContent = `${key} (${cnt}문제)`;
+    blocks.forEach(block => {
+      const lines = block.split('\n')
+        .map(l => l.trim())
+        .filter(l => l !== '');
 
-    label.appendChild(chk);
-    label.appendChild(txt);
-    keywordListEl.appendChild(label);
-  });
+      if (!lines.length) return;
 
-  keywordSelectArea.style.display = 'block';
-  keywordQuizBtn.disabled = false;
-  keywordStatus.textContent = `키워드 ${keys.length}개가 자동 감지됨`;
-}
-/* ================================
-   현재 문제 보여주기
-================================ */
-function showCurrentQuestion() {
-  if (currentIndex < 0 || currentIndex >= problems.length) {
-    showResult();
-    return;
-  }
-  const p = problems[currentIndex];
+      let answerIdx = -1;
+      let answerRaw = '';
+      let explanation = '';
 
-  questionTextEl.innerHTML = formatQuestionText(p.question);
-  answerArea.innerHTML = '';
-  answerStatus.textContent = '';
+      // 정답 라인 찾기
+      lines.forEach((line, i) => {
+        const m = line.match(/^정답\s*[:：]\s*(.+)$/);
+        if (m) {
+          answerIdx = i;
+          const ansPart = m[1].trim();
 
-  const prefix = currentKeyword ? `[키워드: ${currentKeyword}] ` : '';
-  progressStatus.textContent = `${prefix}문제 ${currentIndex + 1} / ${problems.length}`;
-
-  // 객관식
-  if (p.answerType === 'objective') {
-    const container = document.createElement('div');
-    container.className = 'options';
-
-    p.options.forEach((opt, idx) => {
-      const div = document.createElement('div');
-      div.className = 'option-item';
-
-      const id = `opt_${currentIndex}_${idx + 1}`;
-
-      const input = document.createElement('input');
-      input.type = 'radio';
-      input.name = 'option';
-      input.value = String(idx + 1);
-      input.id = id;
-
-      const label = document.createElement('label');
-      label.setAttribute('for', id);
-      label.className = 'option-label';
-      label.textContent = `${idx + 1}. ${opt}`;
-      label.addEventListener('click', () => {
-        input.checked = true;
-        document.querySelectorAll('.option-label')
-                .forEach(el => el.classList.remove('selected'));
-        label.classList.add('selected');
+          const expMatch = ansPart.match(/해설\s*[:：]\s*(.+)$/);
+          if (expMatch) {
+            explanation = expMatch[1].trim();
+            answerRaw = ansPart.slice(0, expMatch.index).trim();
+          } else {
+            answerRaw = ansPart;
+          }
+        }
       });
 
-      div.appendChild(input);
-      div.appendChild(label);
-      container.appendChild(div);
+      if (answerIdx === -1) return;
+
+      // 해설이 별도로 있는 경우
+      if (!explanation && answerIdx + 1 < lines.length) {
+        const nxt = lines[answerIdx + 1];
+        const m2 = nxt.match(/^해설\s*[:：]\s*(.+)$/);
+        if (m2) {
+          explanation = m2[1].trim();
+        } else {
+          const rest = lines.slice(answerIdx + 1).join('\n').trim();
+          if (rest) explanation = rest;
+        }
+      }
+
+      const questionPart = lines.slice(0, answerIdx);
+      if (!questionPart.length) return;
+
+      const questionLine = questionPart[0];
+      const optionLines = questionPart.slice(1);
+
+      // 보기 파싱
+      let options = [];
+
+      // 줄 단위 1)
+      optionLines.forEach(l => {
+        const m = l.match(/^(\d+)[\.\)\-\s]\s*(.+)$/);
+        if (m) {
+          options.push(m[2].trim());
+          return;
+        }
+        const first = l.charAt(0);
+        const num = circledToNumber(first);
+        if (num != null) {
+          options.push(l.slice(1).trim());
+        }
+      });
+
+      // 한 줄 속성 1) 2) 3)
+      if (options.length <= 1 && optionLines.length > 0) {
+        const joined = optionLines.join(' ').replace(/\s+/g, ' ').trim();
+        const markReg = /(①|②|③|④|⑤|⑥|⑦|⑧|⑨|[1-9]\))/g;
+
+        let markers = [];
+        let m;
+        while ((m = markReg.exec(joined)) !== null) {
+          markers.push({ index: m.index, token: m[0] });
+        }
+
+        if (markers.length >= 2) {
+          let inline = [];
+          for (let i = 0; i < markers.length; i++) {
+            const start = markers[i].index + markers[i].token.length;
+            const end = i + 1 < markers.length ? markers[i+1].index : joined.length;
+            const txt = joined.slice(start, end).replace(/^[:\.\-\s]+/, '').trim();
+            if (txt) inline.push(txt);
+          }
+          if (inline.length >= 2) options = inline;
+        }
+      }
+
+      // 정답 판별
+      let answerType = 'subjective';
+      let answer = answerRaw;
+
+      if (options.length > 1) {
+        answerType = 'objective';
+        let nm = answerRaw.match(/(\d+)/);
+        if (nm) {
+          answer = Number(nm[1]);
+        } else {
+          const c = circledToNumber(answerRaw.trim().charAt(0));
+          if (c != null) answer = c;
+        }
+      }
+
+      parsed.push({
+        question: questionLine,
+        options,
+        answer,
+        answerType,
+        explanation,
+        rawBlock: block
+      });
     });
 
-    answerArea.appendChild(container);
-
-  } else {
-    // 주관식
-    const input2 = document.createElement('input');
-    input2.type = 'text';
-    input2.id = 'subjectiveInput';
-    input2.placeholder = '정답을 입력하세요';
-    answerArea.appendChild(input2);
+    return parsed;
   }
 
-  submitAnswerBtn.disabled = false;
-  nextQuestionBtn.disabled = true;
-}
+  /* ================================
+     키워드 후보 추출 (STOPWORDS 적용)
+     → 요청한 단어들 모두 포함한 버전
+  ================================ */
+  function buildKeywordCandidates(problems) {
+    const stopWords = new Set([
+      // ----- 기본/공통 스톱워드 -----
+      '다음','다음의','다음중','다음중에서','다음은','다음에','다음사항','중','다','것은','어느','옳은',
+      '옳지','않은','아닌','설명으로','설명','관련된','관련하여','가장','보기','대한','및','또는','있는',
+      '없는','사항','기출','문제','하며','주를','에서','으로','그리고','또한','때문에','통해','인해',
+      '하여','하는','하기','되어','되어야','이때','이는','그때','예를','들어','등의','경우','다음과',
+      '같은','경우에','있어','있다','있으며','않는','않는다','아니다','아니라','이다','이며','하고',
+      '위해','위한','따라','따른','따라서','것으로','것이다','것을','해당한다','해당하는','해당하지',
+      '관련','관련한','관련이','등을','같다','다른','의한','의하여','이용하여','사용하여','사용하는',
+      '사용할','사용','말과','일에','일부를','이후','기간의','기간에','시점에','시점의','일정',
+      '일정시점을','순으로','기준으로','기준','적용','적용할','적용하는','추가','변동','변동이','변동은',
+      '변하지','이루어진','되는','것이므로','무관하다','나타나는','나타날','보여주는','중에서','중인',
+      '포함되지','포함된다','일시적으로','먼저','보다','아직','이미','모두','일반적인','일반적으로',
+      '적절하지','필요한','필수','가능한','즉시','함께','없다','없으므로','어떤','어떻게','포함','왜',
 
-/* ================================
-   최종 결과 화면
-================================ */
-function showResult() {
-  questionCard.style.display = 'none';
-  resultCard.style.display = 'block';
+      // ----- 추가로 요청한 스톱워드 -----
+      '회기출',
+      '원이다',
+      '원을',
+      '원에',
+      '하였다',
+      '한다',
+      '하지',
+      '않습니다',
+      '아닙니다',
+      '것이',
+      '크게',
+      '잘못',
+      '못한',
+      '그럼',
+      '이전',
+      '현재',
+      '미래',
+      '일부',
+      '나머지는',
+      '말한다',
+      '특정',
+      '상태를',
+      '상태',
+      '목적으로',
+      '목적적합성과',
+      '목적적',
+      '기초',
+      '기말',
+      '기초자본',
+      '기말자본',
+      '내에',
+      '년의',
+      '년을',
+      '년에',
+      '년간',
+      '단기',
+      '단기간',
+      '개월',
+      '수량',
+      '비율은',
+      '평균단가',
+      '평균법',
+      '평균',
+      '합계가',
+      '잔액이',
+      '잔액은',
+      '잔액을',
+      '기초잔액은',
+      '기말잔액은',
+      '금액은',
+      '금액의',
+      '금액으로',
+      '금액을',
+      '원이며',
+      '원이고',
+      '원이',
+      '원과',
+      '원일',
+      '원은',
+      '원입니다',
+      '원가',
+      '발생',
+      '발생한',
+      '발생하는',
+      '발생은',
+      '나타내는',
+      '나타난다',
+      '보여주는',
+      '계속',
+      '현재가치는',
+      '현재가치',
+      '회사가',
+      '기업의',
+      '기업이',
+      '기업',
+      '이자율',
+      '맞는',
+      '직접',
+      '자료에서',
+      '자료에',
+      '자료는',
+      '자료이다',
+      '정보를',
+      '정의',
+      '특성',
+      '대표적',
+      '사건의',
+      '사건을',
+      '상승할',
+      '기간',
+      '가정',
+      '가정한다',
+      '없지만',
+      '별도의',
+      '동시에',
+      '자료를',
+      '이에'
+    ]);
 
-  const total = problems.length;
-  const wrongCount = total - correctCount;
-  const rate = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+    let map = {};
 
-  let html = '';
-  if (currentKeyword) {
-    html += `<p>이번 세트는 <strong>"${currentKeyword}"</strong> 키워드로 출제되었습니다.</p>`;
+    problems.forEach((p, idx) => {
+      const base = (p.question || '') + ' ' + (p.explanation || '');
+      const cleaned = base
+        .replace(/[0-9\(\)\[\]\{\}\.,\/\\\-\+:%=<>]/g, ' ')
+        .replace(/[·•∙ㆍ]/g, ' ')
+        .replace(/\s+/g, ' ');
+
+      const tokens = cleaned
+        .split(' ')
+        .map(t => t.trim())
+        .filter(t => t.length >= 2);
+
+      const seen = new Set();
+
+      tokens.forEach(word => {
+        // 한글 단어만 대상으로
+        if (!/^[가-힣]+$/.test(word)) return;
+        if (stopWords.has(word)) return;
+        if (seen.has(word)) return;
+
+        seen.add(word);
+        if (!map[word]) map[word] = [];
+        map[word].push(idx);
+      });
+    });
+
+    // 최소 문제수 미달 키워드 제거
+    Object.keys(map).forEach(k => {
+      if (map[k].length < MIN_KEYWORD_QUESTIONS) delete map[k];
+    });
+
+    return map;
   }
-  html += `
-    <p>총 <strong>${total}</strong>문제 중 <strong>${correctCount}</strong>개 정답,
-    <strong>${wrongCount}</strong>개 오답입니다.</p>
-    <p>정답률: <strong>${rate}%</strong></p>
-  `;
 
-  if (wrongList.length > 0) {
-    html += `<p>오답노트는 아래 버튼으로 다운로드할 수 있습니다.</p>`;
-  } else {
-    html += `<p>오답이 없습니다. 잘하셨어요!</p>`;
-  }
+  /* ================================
+     키워드 리스트 렌더링
+     (name="keywordCandidate" 추가)
+  ================================ */
+  function renderKeywordList(keywordMap) {
+    keywordListEl.innerHTML = '';
 
-  resultSummary.innerHTML = html;
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
-/* ================================
-   TXT 목록 불러오기 (GitHub API)
-================================ */
-async function loadProblemFilesList() {
-  fileSelect.disabled = true;
-  loadFileBtn.disabled = true;
-  fileSelect.innerHTML = '<option>TXT 목록을 불러오는 중...</option>';
-
-  const apiUrl =
-    `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${PROBLEMS_PATH}?ref=${GITHUB_BRANCH}`;
-
-  try {
-    const res = await fetch(apiUrl, { cache: "no-cache" });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-
-    const data = await res.json();
-    const arr = Array.isArray(data) ? data : [];
-
-    const txtFiles = arr.filter(item => item.type === 'file' &&
-                                        item.name.toLowerCase().endsWith('.txt'));
-
-    if (!txtFiles.length) {
-      fileSelect.innerHTML = '<option>.txt 파일이 없습니다.</option>';
-      fileStatus.textContent = '/problems 폴더에 .txt 파일을 업로드하면 자동으로 목록에 뜹니다.';
+    const keys = Object.keys(keywordMap || {});
+    if (!keys.length) {
+      keywordSelectArea.style.display = 'none';
+      keywordStatus.textContent = '사용 가능한 키워드가 없습니다.';
+      keywordQuizBtn.disabled = true;
       return;
     }
 
-    fileSelect.innerHTML = '';
-    const metaList = txtFiles.map(f => ({ name: f.name, path: f.path }));
+    keys.sort((a,b) => keywordMap[b].length - keywordMap[a].length);
 
-    metaList.forEach((item, idx) => {
-      const opt = document.createElement('option');
-      opt.value = String(idx);
-      opt.textContent = `${idx + 1}. ${item.name.replace(/\.txt$/, '')}`;
-      fileSelect.appendChild(opt);
+    keys.forEach(key => {
+      const cnt = keywordMap[key].length;
+      const label = document.createElement('label');
+      const chk = document.createElement('input');
+      chk.type = 'checkbox';
+      chk.value = key;
+      chk.checked = true;
+      chk.name = 'keywordCandidate'; // ✅ 체크박스 선택용 name
+
+      const txt = document.createElement('span');
+      txt.textContent = `${key} (${cnt}문제)`;
+
+      label.appendChild(chk);
+      label.appendChild(txt);
+      keywordListEl.appendChild(label);
     });
 
-    fileSelect.dataset.files = JSON.stringify(metaList);
-    fileSelect.disabled = false;
-    loadFileBtn.disabled = false;
-
-    fileStatus.textContent =
-      `총 ${txtFiles.length}개의 TXT 파일을 찾았습니다. 선택 후 불러오기 버튼을 눌러주세요.`;
-
-  } catch (err) {
-    console.error(err);
-    fileSelect.innerHTML = '<option>목록을 불러올 수 없습니다.</option>';
-    fileStatus.textContent = 'GitHub API 오류: ' + err.message;
+    keywordSelectArea.style.display = 'block';
+    keywordQuizBtn.disabled = false;
+    keywordStatus.textContent = `키워드 ${keys.length}개가 자동 감지됨`;
   }
-}
 
-/* ================================
-   초기 로딩
-================================ */
-window.addEventListener("DOMContentLoaded", function () {
-  setupCard = document.getElementById("setupCard");
-  fileSelect = document.getElementById("fileSelect");
-  loadFileBtn = document.getElementById("loadFileBtn");
-  fileStatus = document.getElementById("fileStatus");
+  /* ================================
+     현재 문제 보여주기
+  ================================ */
+  function showCurrentQuestion() {
+    if (currentIndex < 0 || currentIndex >= problems.length) {
+      showResult();
+      return;
+    }
+    const p = problems[currentIndex];
 
-  questionCountArea = document.getElementById("questionCountArea");
-  questionCountInput = document.getElementById("questionCountInput");
-  startQuizBtn = document.getElementById("startQuizBtn");
-  questionCountStatus = document.getElementById("questionCountStatus");
+    questionTextEl.innerHTML = formatQuestionText(p.question);
+    answerArea.innerHTML = '';
+    answerStatus.textContent = '';
 
-  keywordQuizBtn = document.getElementById("keywordQuizBtn");
-  keywordStatus = document.getElementById("keywordStatus");
-  keywordSelectArea = document.getElementById("keywordSelectArea");
-  keywordListEl = document.getElementById("keywordList");
-  keywordHint = document.getElementById("keywordHint");
+    const prefix = currentKeyword ? `[키워드: ${currentKeyword}] ` : '';
+    progressStatus.textContent = `${prefix}문제 ${currentIndex + 1} / ${problems.length}`;
 
-  questionCard = document.getElementById("questionCard");
-  questionTextEl = document.getElementById("questionText");
-  answerArea = document.getElementById("answerArea");
-  submitAnswerBtn = document.getElementById("submitAnswerBtn");
-  nextQuestionBtn = document.getElementById("nextQuestionBtn");
-  answerStatus = document.getElementById("answerStatus");
-  progressStatus = document.getElementById("progressStatus");
+    // 객관식
+    if (p.answerType === 'objective') {
+      const container = document.createElement('div');
+      container.className = 'options';
 
-  resultCard = document.getElementById("resultCard");
-  resultSummary = document.getElementById("resultSummary");
-  downloadWrongBtn = document.getElementById("downloadWrongBtn");
-  restartBtn = document.getElementById("restartBtn");
+      p.options.forEach((opt, idx) => {
+        const div = document.createElement('div');
+        div.className = 'option-item';
 
+        const id = `opt_${currentIndex}_${idx + 1}`;
 
-  /* =====================================
-     TXT 파일 불러오기 버튼
-  ===================================== */
-  loadFileBtn.addEventListener("click", async () => {
-    let filesMeta = [];
+        const input = document.createElement('input');
+        input.type = 'radio';
+        input.name = 'option';
+        input.value = String(idx + 1);
+        input.id = id;
+
+        const label = document.createElement('label');
+        label.setAttribute('for', id);
+        label.className = 'option-label';
+        label.textContent = `${idx + 1}. ${opt}`;
+        label.addEventListener('click', () => {
+          input.checked = true;
+          document.querySelectorAll('.option-label')
+                  .forEach(el => el.classList.remove('selected'));
+          label.classList.add('selected');
+        });
+
+        div.appendChild(input);
+        div.appendChild(label);
+        container.appendChild(div);
+      });
+
+      answerArea.appendChild(container);
+
+    } else {
+      // 주관식
+      const input2 = document.createElement('input');
+      input2.type = 'text';
+      input2.id = 'subjectiveInput';
+      input2.placeholder = '정답을 입력하세요';
+      answerArea.appendChild(input2);
+    }
+
+    submitAnswerBtn.disabled = false;
+    nextQuestionBtn.disabled = true;
+  }
+
+  /* ================================
+     최종 결과 화면
+  ================================ */
+  function showResult() {
+    questionCard.style.display = 'none';
+    resultCard.style.display = 'block';
+
+    const total = problems.length;
+    const wrongCount = total - correctCount;
+    const rate = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+
+    let html = '';
+    if (currentKeyword) {
+      html += `<p>이번 세트는 <strong>"${currentKeyword}"</strong> 키워드로 출제되었습니다.</p>`;
+    }
+    html += `
+      <p>총 <strong>${total}</strong>문제 중 <strong>${correctCount}</strong>개 정답,
+      <strong>${wrongCount}</strong>개 오답입니다.</p>
+      <p>정답률: <strong>${rate}%</strong></p>
+    `;
+
+    if (wrongList.length > 0) {
+      html += `<p>오답노트는 아래 버튼으로 다운로드할 수 있습니다.</p>`;
+    } else {
+      html += `<p>오답이 없습니다. 잘하셨어요!</p>`;
+    }
+
+    resultSummary.innerHTML = html;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  /* ================================
+     TXT 목록 불러오기 (GitHub API)
+  ================================ */
+  async function loadProblemFilesList() {
+    fileSelect.disabled = true;
+    loadFileBtn.disabled = true;
+    fileSelect.innerHTML = '<option>TXT 목록을 불러오는 중...</option>';
+
+    const apiUrl =
+      `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${PROBLEMS_PATH}?ref=${GITHUB_BRANCH}`;
+
     try {
-      filesMeta = JSON.parse(fileSelect.dataset.files || "[]");
-    } catch (e) {}
+      const res = await fetch(apiUrl, { cache: "no-cache" });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
 
-    const idx = Number(fileSelect.value);
-    if (!filesMeta[idx]) return;
+      const data = await res.json();
+      const arr = Array.isArray(data) ? data : [];
 
-    currentFileMeta = filesMeta[idx];
-    currentKeyword = null;
-    keywordMap = null;
+      const txtFiles = arr.filter(item => item.type === 'file' &&
+                                        item.name.toLowerCase().endsWith('.txt'));
 
-    fileStatus.textContent = `파일 읽는 중: ${currentFileMeta.path} ...`;
+      if (!txtFiles.length) {
+        fileSelect.innerHTML = '<option>.txt 파일이 없습니다.</option>';
+        fileStatus.textContent = '/problems 폴더에 .txt 파일을 업로드하면 자동으로 목록에 뜹니다.';
+        return;
+      }
 
-    const rawUrl =
-      `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${encodeURI(currentFileMeta.path)}`;
+      fileSelect.innerHTML = '';
+      const metaList = txtFiles.map(f => ({ name: f.name, path: f.path }));
 
-    try {
-      const res = await fetch(rawUrl, { cache: "no-cache" });
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      const text = await res.text();
+      metaList.forEach((item, idx) => {
+        const opt = document.createElement('option');
+        opt.value = String(idx);
+        opt.textContent = `${idx + 1}. ${item.name.replace(/\.txt$/, '')}`;
+        fileSelect.appendChild(opt);
+      });
 
-      allProblems = parseProblems(text);
-      problems = [];
+      fileSelect.dataset.files = JSON.stringify(metaList);
+      fileSelect.disabled = false;
+      loadFileBtn.disabled = false;
+
+      fileStatus.textContent =
+        `총 ${txtFiles.length}개의 TXT 파일을 찾았습니다. 선택 후 불러오기 버튼을 눌러주세요.`;
+    } catch (err) {
+      console.error(err);
+      fileSelect.innerHTML = '<option>목록을 불러올 수 없습니다.</option>';
+      fileStatus.textContent = 'GitHub API 오류: ' + err.message;
+    }
+  }
+
+  /* ================================
+     초기 로딩
+  ================================ */
+  window.addEventListener("DOMContentLoaded", function () {
+    setupCard = document.getElementById("setupCard");
+    fileSelect = document.getElementById("fileSelect");
+    loadFileBtn = document.getElementById("loadFileBtn");
+    fileStatus = document.getElementById("fileStatus");
+
+    questionCountArea = document.getElementById("questionCountArea");
+    questionCountInput = document.getElementById("questionCountInput");
+    startQuizBtn = document.getElementById("startQuizBtn");
+    questionCountStatus = document.getElementById("questionCountStatus");
+
+    keywordQuizBtn = document.getElementById("keywordQuizBtn");
+    keywordStatus = document.getElementById("keywordStatus");
+    keywordSelectArea = document.getElementById("keywordSelectArea");
+    keywordListEl = document.getElementById("keywordList");
+    keywordHint = document.getElementById("keywordHint");
+
+    questionCard = document.getElementById("questionCard");
+    questionTextEl = document.getElementById("questionText");
+    answerArea = document.getElementById("answerArea");
+    submitAnswerBtn = document.getElementById("submitAnswerBtn");
+    nextQuestionBtn = document.getElementById("nextQuestionBtn");
+    answerStatus = document.getElementById("answerStatus");
+    progressStatus = document.getElementById("progressStatus");
+
+    resultCard = document.getElementById("resultCard");
+    resultSummary = document.getElementById("resultSummary");
+    downloadWrongBtn = document.getElementById("downloadWrongBtn");
+    restartBtn = document.getElementById("restartBtn");
+
+    /* =====================================
+       TXT 파일 불러오기 버튼
+    ===================================== */
+    loadFileBtn.addEventListener("click", async () => {
+      let filesMeta = [];
+      try {
+        filesMeta = JSON.parse(fileSelect.dataset.files || "[]");
+      } catch (e) {}
+
+      const idx = Number(fileSelect.value);
+      if (!filesMeta[idx]) return;
+
+      currentFileMeta = filesMeta[idx];
+      currentKeyword = null;
+      keywordMap = null;
+
+      fileStatus.textContent = `파일 읽는 중: ${currentFileMeta.path} ...`;
+
+      const rawUrl =
+        `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${encodeURI(currentFileMeta.path)}`;
+
+      try {
+        const res = await fetch(rawUrl, { cache: "no-cache" });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const text = await res.text();
+
+        allProblems = parseProblems(text);
+        problems = [];
+
+        currentIndex = 0;
+        correctCount = 0;
+        solvedCount = 0;
+        wrongList = [];
+
+        if (!allProblems.length) {
+          fileStatus.textContent = "이 TXT에서 문제를 인식하지 못했습니다. 형식을 확인해주세요.";
+          questionCountArea.style.display = "none";
+          return;
+        }
+
+        fileStatus.textContent =
+          `${currentFileMeta.name} 에서 ${allProblems.length}문제를 불러왔습니다.`;
+
+        questionCountArea.style.display = "block";
+        questionCountInput.value = allProblems.length;
+        questionCountInput.max = allProblems.length;
+        questionCountStatus.textContent =
+          `최대 ${allProblems.length}문제까지 풀 수 있습니다.`;
+
+        // 키워드 분석
+        keywordMap = buildKeywordCandidates(allProblems);
+        renderKeywordList(keywordMap);
+
+      } catch (err) {
+        fileStatus.textContent = "파일 로딩 에러: " + err.message;
+      }
+    });
+
+    /* =====================================
+       랜덤 N개 풀기
+    ===================================== */
+    startQuizBtn.addEventListener("click", () => {
+      if (!allProblems.length) {
+        alert("먼저 TXT 파일을 불러오세요.");
+        return;
+      }
+
+      let n = parseInt(questionCountInput.value, 10);
+      if (!isFinite(n) || n <= 0) n = allProblems.length;
+      if (n > allProblems.length) n = allProblems.length;
+
+      // 셔플
+      const indices = [...Array(allProblems.length).keys()];
+      for (let i = indices.length - 1; i > 0; i--) {
+        const k = Math.floor(Math.random() * (i + 1));
+        [indices[i], indices[k]] = [indices[k], indices[i]];
+      }
+
+      problems = indices.slice(0, n).map(i => allProblems[i]);
 
       currentIndex = 0;
       correctCount = 0;
       solvedCount = 0;
       wrongList = [];
+      currentKeyword = null;
 
-      if (!allProblems.length) {
-        fileStatus.textContent = "이 TXT에서 문제를 인식하지 못했습니다. 형식을 확인해주세요.";
-        questionCountArea.style.display = "none";
+      setupCard.style.display = "none";
+      questionCard.style.display = "block";
+      resultCard.style.display = "none";
+
+      showCurrentQuestion();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    /* =====================================
+       키워드별 풀기
+    ===================================== */
+    keywordQuizBtn.addEventListener("click", () => {
+      if (!keywordMap) {
+        alert("키워드가 없습니다.");
+        return;
+      }
+      const allKeys = Object.keys(keywordMap);
+      if (!allKeys.length) {
+        alert("사용 가능한 키워드가 없습니다.");
         return;
       }
 
-      fileStatus.textContent =
-        `${currentFileMeta.name} 에서 ${allProblems.length}문제를 불러왔습니다.`;
+      // 체크된 키워드 수집
+      const selectedInputs = Array.from(
+        document.querySelectorAll('input[name="keywordCandidate"]:checked')
+      );
+      const selectedKeys = selectedInputs.map(el => el.value);
 
-      questionCountArea.style.display = "block";
-      questionCountInput.value = allProblems.length;
-      questionCountInput.max = allProblems.length;
-      questionCountStatus.textContent =
-        `최대 ${allProblems.length}문제까지 풀 수 있습니다.`;
+      if (!selectedKeys.length) {
+        alert("키워드를 선택해주세요.");
+        return;
+      }
 
-      // 키워드 분석
-      keywordMap = buildKeywordCandidates(allProblems);
-      renderKeywordList(keywordMap);
+      // 랜덤 키워드 선택
+      const key = selectedKeys[Math.floor(Math.random() * selectedKeys.length)];
+      const indices = [...keywordMap[key]];
 
-    } catch (err) {
-      fileStatus.textContent = "파일 로딩 에러: " + err.message;
-    }
-  });
+      if (!indices.length) {
+        alert("이 키워드로는 문제가 없습니다.");
+        return;
+      }
 
+      // 섞기
+      for (let i = indices.length - 1; i > 0; i--) {
+        const k = Math.floor(Math.random() * (i + 1));
+        [indices[i], indices[k]] = [indices[k], indices[i]];
+      }
 
-  /* =====================================
-     랜덤 N개 풀기
-  ===================================== */
-  startQuizBtn.addEventListener("click", () => {
-    if (!allProblems.length) {
-      alert("먼저 TXT 파일을 불러오세요.");
-      return;
-    }
+      const maxN = indices.length;
+      let inputStr = prompt(
+        `키워드 "${key}" 관련 문제는 ${maxN}개입니다.\n몇 문제 풀까요? (1~${maxN})`,
+        Math.min(10, maxN)
+      );
 
-    let n = parseInt(questionCountInput.value, 10);
-    if (!isFinite(n) || n <= 0) n = allProblems.length;
-    if (n > allProblems.length) n = allProblems.length;
+      if (inputStr === null) {
+        alert("키워드별 풀기 취소됨.");
+        currentKeyword = null;
+        return;
+      }
 
-    // 셔플
-    const indices = [...Array(allProblems.length).keys()];
-    for (let i = indices.length - 1; i > 0; i--) {
-      const k = Math.floor(Math.random() * (i + 1));
-      [indices[i], indices[k]] = [indices[k], indices[i]];
-    }
+      let n = parseInt(inputStr, 10);
+      if (!isFinite(n) || n <= 0) n = maxN;
+      if (n > maxN) n = maxN;
 
-    problems = indices.slice(0, n).map(i => allProblems[i]);
+      problems = indices.slice(0, n).map(i => allProblems[i]);
 
-    currentIndex = 0;
-    correctCount = 0;
-    solvedCount = 0;
-    wrongList = [];
-    currentKeyword = null;
+      currentIndex = 0;
+      correctCount = 0;
+      solvedCount = 0;
+      wrongList = [];
+      currentKeyword = key;
 
-    setupCard.style.display = "none";
-    questionCard.style.display = "block";
-    resultCard.style.display = "none";
+      setupCard.style.display = "none";
+      questionCard.style.display = "block";
+      resultCard.style.display = "none";
 
-    showCurrentQuestion();
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  });
+      showCurrentQuestion();
+    });
 
+    /* =====================================
+       정답 제출
+    ===================================== */
+    submitAnswerBtn.addEventListener("click", () => {
+      if (currentIndex < 0 || currentIndex >= problems.length) return;
 
-  /* =====================================
-     키워드별 풀기
-  ===================================== */
-  keywordQuizBtn.addEventListener("click", () => {
-    if (!keywordMap) {
-      alert("키워드가 없습니다.");
-      return;
-    }
-    const allKeys = Object.keys(keywordMap);
-    if (!allKeys.length) {
-      alert("사용 가능한 키워드가 없습니다.");
-      return;
-    }
+      const p = problems[currentIndex];
+      let userAnswer = null;
 
-    // 체크된 키워드 수집
-    const selectedInputs = Array.from(
-      document.querySelectorAll('input[name="keywordCandidate"]:checked')
-    );
-    const selectedKeys = selectedInputs.map(el => el.value);
+      if (p.answerType === 'objective') {
+        const checked = document.querySelector('input[name="option"]:checked');
+        if (!checked) return alert("보기를 선택하세요.");
+        userAnswer = Number(checked.value);
+      } else {
+        const input = document.getElementById("subjectiveInput");
+        if (!input.value.trim()) return alert("정답을 입력하세요.");
+        userAnswer = input.value.trim();
+      }
 
-    if (!selectedKeys.length) {
-      alert("키워드를 선택해주세요.");
-      return;
-    }
+      solvedCount++;
+      let isCorrect = false;
 
-    // 랜덤 키워드 선택
-    const key = selectedKeys[Math.floor(Math.random() * selectedKeys.length)];
-    const indices = [...keywordMap[key]];
+      if (p.answerType === 'objective') {
+        isCorrect = (userAnswer === p.answer);
+      } else {
+        const norm = s => String(s).replace(/\s+/g, "");
+        isCorrect = (norm(userAnswer) === norm(p.answer));
+      }
 
-    if (!indices.length) {
-      alert("이 키워드로는 문제가 없습니다.");
-      return;
-    }
+      if (isCorrect) {
+        correctCount++;
+        answerStatus.innerHTML =
+          `<span class="badge badge-ok">정답</span> 잘 풀었습니다!` +
+          (p.explanation
+            ? `<br><br><strong>해설</strong><br>${p.explanation.replace(/\n/g, "<br>")}`
+            : "");
+      } else {
+        answerStatus.innerHTML =
+          `<span class="badge badge-wrong">오답</span> 정답은 ${
+            p.answerType === "objective" ? p.answer + "번" : p.answer
+          } 입니다.` +
+          (p.explanation
+            ? `<br><br><strong>해설</strong><br>${p.explanation.replace(/\n/g, "<br>")}`
+            : "");
 
-    // 섞기
-    for (let i = indices.length - 1; i > 0; i--) {
-      const k = Math.floor(Math.random() * (i + 1));
-      [indices[i], indices[k]] = [indices[k], indices[i]];
-    }
-
-    const maxN = indices.length;
-    let inputStr = prompt(
-      `키워드 "${key}" 관련 문제는 ${maxN}개입니다.\n몇 문제 풀까요? (1~${maxN})`,
-      Math.min(10, maxN)
-    );
-
-    if (inputStr === null) {
-      alert("키워드별 풀기 취소됨.");
-      currentKeyword = null;
-      return;
-    }
-
-    let n = parseInt(inputStr, 10);
-    if (!isFinite(n) || n <= 0) n = maxN;
-    if (n > maxN) n = maxN;
-
-    problems = indices.slice(0, n).map(i => allProblems[i]);
-
-    currentIndex = 0;
-    correctCount = 0;
-    solvedCount = 0;
-    wrongList = [];
-    currentKeyword = key;
-
-    setupCard.style.display = "none";
-    questionCard.style.display = "block";
-    resultCard.style.display = "none";
-
-    showCurrentQuestion();
-  });
-
-
-  /* =====================================
-     정답 제출
-  ===================================== */
-  submitAnswerBtn.addEventListener("click", () => {
-    if (currentIndex < 0 || currentIndex >= problems.length) return;
-
-    const p = problems[currentIndex];
-    let userAnswer = null;
-
-    if (p.answerType === 'objective') {
-      const checked = document.querySelector('input[name="option"]:checked');
-      if (!checked) return alert("보기를 선택하세요.");
-      userAnswer = Number(checked.value);
-
-    } else {
-      const input = document.getElementById("subjectiveInput");
-      if (!input.value.trim()) return alert("정답을 입력하세요.");
-      userAnswer = input.value.trim();
-    }
-
-    solvedCount++;
-    let isCorrect = false;
-
-    if (p.answerType === 'objective') {
-      isCorrect = (userAnswer === p.answer);
-    } else {
-      const norm = s => String(s).replace(/\s+/g, "");
-      isCorrect = (norm(userAnswer) === norm(p.answer));
-    }
-
-    if (isCorrect) {
-      correctCount++;
-      answerStatus.innerHTML =
-        `<span class="badge badge-ok">정답</span> 잘 풀었습니다!` +
-        (p.explanation
-          ? `<br><br><strong>해설</strong><br>${p.explanation.replace(/\n/g, "<br>")}`
-          : "");
-    } else {
-      answerStatus.innerHTML =
-        `<span class="badge badge-wrong">오답</span> 정답은 ${
-          p.answerType === "objective" ? p.answer + "번" : p.answer
-        } 입니다.` +
-        (p.explanation
-          ? `<br><br><strong>해설</strong><br>${p.explanation.replace(/\n/g, "<br>")}`
-          : "");
-
-      wrongList.push({
-        fileName: currentFileMeta ? currentFileMeta.path : "",
-        index: currentIndex + 1,
-        question: p.question,
-        options: p.options,
-        answerType: p.answerType,
-        correctAnswer: p.answer,
-        userAnswer,
-        explanation: p.explanation,
-        rawBlock: p.rawBlock
-      });
-    }
-
-    submitAnswerBtn.disabled = true;
-    nextQuestionBtn.disabled = false;
-    nextQuestionBtn.textContent =
-      currentIndex === problems.length - 1 ? "결과 보기" : "다음 문제 ▶";
-  });
-
-
-  /* =====================================
-     다음 문제 / 결과 보기
-  ===================================== */
-  nextQuestionBtn.addEventListener("click", () => {
-    if (currentIndex >= problems.length - 1) {
-      showResult();
-      return;
-    }
-    currentIndex++;
-    showCurrentQuestion();
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  });
-
-
-  /* =====================================
-     오답노트 다운로드
-  ===================================== */
-  downloadWrongBtn.addEventListener("click", () => {
-    if (!wrongList.length) return alert("오답이 없습니다.");
-
-    const lines = [];
-    lines.push(`▶ 오답노트: ${new Date().toLocaleString()}`);
-    if (currentKeyword) lines.push(`▶ 키워드 모드: ${currentKeyword}`);
-    lines.push("");
-
-    wrongList.forEach(item => {
-      lines.push("----------------------------------------");
-      if (item.fileName) lines.push("[파일] " + item.fileName);
-      lines.push("[문제번호] " + item.index);
-      lines.push("[문제]");
-      lines.push(item.question);
-
-      if (item.options.length) {
-        lines.push("[보기]");
-        item.options.forEach((opt, idx) => {
-          lines.push(`  ${idx + 1}. ${opt}`);
+        wrongList.push({
+          fileName: currentFileMeta ? currentFileMeta.path : "",
+          index: currentIndex + 1,
+          question: p.question,
+          options: p.options,
+          answerType: p.answerType,
+          correctAnswer: p.answer,
+          userAnswer,
+          explanation: p.explanation,
+          rawBlock: p.rawBlock
         });
       }
 
-      lines.push("[나의 답] " + item.userAnswer);
-      lines.push(
-        "[정답] " +
-          (item.answerType === "objective"
-            ? item.correctAnswer + "번"
-            : item.correctAnswer)
-      );
-
-      if (item.explanation) {
-        lines.push("[해설]");
-        lines.push(item.explanation);
-      }
-      lines.push("");
+      submitAnswerBtn.disabled = true;
+      nextQuestionBtn.disabled = false;
+      nextQuestionBtn.textContent =
+        currentIndex === problems.length - 1 ? "결과 보기" : "다음 문제 ▶";
     });
 
-    const blob = new Blob([lines.join("\n")], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
+    /* =====================================
+       다음 문제 / 결과 보기
+    ===================================== */
+    nextQuestionBtn.addEventListener("click", () => {
+      if (currentIndex >= problems.length - 1) {
+        showResult();
+        return;
+      }
+      currentIndex++;
+      showCurrentQuestion();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
 
-    const a = document.createElement("a");
-    const base =
-      currentFileMeta?.name?.replace(/\.txt$/, "") || "오답노트";
-    a.href = url;
-    a.download = base + "_오답노트.txt";
+    /* =====================================
+       오답노트 다운로드
+    ===================================== */
+    downloadWrongBtn.addEventListener("click", () => {
+      if (!wrongList.length) return alert("오답이 없습니다.");
 
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+      const lines = [];
+      lines.push(`▶ 오답노트: ${new Date().toLocaleString()}`);
+      if (currentKeyword) lines.push(`▶ 키워드 모드: ${currentKeyword}`);
+      lines.push("");
+
+      wrongList.forEach(item => {
+        lines.push("----------------------------------------");
+        if (item.fileName) lines.push("[파일] " + item.fileName);
+        lines.push("[문제번호] " + item.index);
+        lines.push("[문제]");
+        lines.push(item.question);
+
+        if (item.options.length) {
+          lines.push("[보기]");
+          item.options.forEach((opt, idx) => {
+            lines.push(`  ${idx + 1}. ${opt}`);
+          });
+        }
+
+        lines.push("[나의 답] " + item.userAnswer);
+        lines.push(
+          "[정답] " +
+            (item.answerType === "objective"
+              ? item.correctAnswer + "번"
+              : item.correctAnswer)
+        );
+
+        if (item.explanation) {
+          lines.push("[해설]");
+          lines.push(item.explanation);
+        }
+        lines.push("");
+      });
+
+      const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      const base =
+        currentFileMeta?.name?.replace(/\.txt$/, "") || "오답노트";
+      a.href = url;
+      a.download = base + "_오답노트.txt";
+
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    /* =====================================
+       다시 시작 (처음 화면)
+    ===================================== */
+    restartBtn.addEventListener("click", () => {
+      setupCard.style.display = "block";
+      questionCard.style.display = "none";
+      resultCard.style.display = "none";
+
+      currentKeyword = null;
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    /* =====================================
+       최초 실행 시 TXT 파일 목록 로딩
+    ===================================== */
+    loadProblemFilesList();
   });
-
-
-  /* =====================================
-     다시 시작 (처음 화면)
-  ===================================== */
-  restartBtn.addEventListener("click", () => {
-    setupCard.style.display = "block";
-    questionCard.style.display = "none";
-    resultCard.style.display = "none";
-
-    currentKeyword = null;
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  });
-
-
-  /* =====================================
-     최초 실행 시 TXT 파일 목록 로딩
-  ===================================== */
-  loadProblemFilesList();
-});
-</script>
+  </script>
 </body>
 </html>
