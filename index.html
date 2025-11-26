@@ -418,11 +418,10 @@
 
   /* ================================
      키워드 후보 추출 (STOPWORDS 적용)
-     → 요청한 단어들 모두 포함한 버전
   ================================ */
   function buildKeywordCandidates(problems) {
     const stopWords = new Set([
-      // ----- 기본/공통 스톱워드 -----
+      // 기본/공통 스톱워드
       '다음','다음의','다음중','다음중에서','다음은','다음에','다음사항','중','다','것은','어느','옳은',
       '옳지','않은','아닌','설명으로','설명','관련된','관련하여','가장','보기','대한','및','또는','있는',
       '없는','사항','기출','문제','하며','주를','에서','으로','그리고','또한','때문에','통해','인해',
@@ -436,105 +435,17 @@
       '포함되지','포함된다','일시적으로','먼저','보다','아직','이미','모두','일반적인','일반적으로',
       '적절하지','필요한','필수','가능한','즉시','함께','없다','없으므로','어떤','어떻게','포함','왜',
 
-      // ----- 추가로 요청한 스톱워드 -----
-      '회기출',
-      '원이다',
-      '원을',
-      '원에',
-      '하였다',
-      '한다',
-      '하지',
-      '않습니다',
-      '아닙니다',
-      '것이',
-      '크게',
-      '잘못',
-      '못한',
-      '그럼',
-      '이전',
-      '현재',
-      '미래',
-      '일부',
-      '나머지는',
-      '말한다',
-      '특정',
-      '상태를',
-      '상태',
-      '목적으로',
-      '목적적합성과',
-      '목적적',
-      '기초',
-      '기말',
-      '기초자본',
-      '기말자본',
-      '내에',
-      '년의',
-      '년을',
-      '년에',
-      '년간',
-      '단기',
-      '단기간',
-      '개월',
-      '수량',
-      '비율은',
-      '평균단가',
-      '평균법',
-      '평균',
-      '합계가',
-      '잔액이',
-      '잔액은',
-      '잔액을',
-      '기초잔액은',
-      '기말잔액은',
-      '금액은',
-      '금액의',
-      '금액으로',
-      '금액을',
-      '원이며',
-      '원이고',
-      '원이',
-      '원과',
-      '원일',
-      '원은',
-      '원입니다',
-      '원가',
-      '발생',
-      '발생한',
-      '발생하는',
-      '발생은',
-      '나타내는',
-      '나타난다',
-      '보여주는',
-      '계속',
-      '현재가치는',
-      '현재가치',
-      '회사가',
-      '기업의',
-      '기업이',
-      '기업',
-      '이자율',
-      '맞는',
-      '직접',
-      '자료에서',
-      '자료에',
-      '자료는',
-      '자료이다',
-      '정보를',
-      '정의',
-      '특성',
-      '대표적',
-      '사건의',
-      '사건을',
-      '상승할',
-      '기간',
-      '가정',
-      '가정한다',
-      '없지만',
-      '별도의',
-      '동시에',
-      '자료를',
-      '이에'
-    });
+      // 추가 요청 스톱워드
+      '회기출','원이다','원을','원에','하였다','한다','하지','않습니다','아닙니다','것이','크게','잘못',
+      '못한','그럼','이전','현재','미래','일부','나머지는','말한다','특정','상태를','상태','목적으로',
+      '목적적합성과','목적적','기초','기말','기초자본','기말자본','내에','년의','년을','년에','년간',
+      '단기','단기간','개월','수량','비율은','평균단가','평균법','평균','합계가','잔액이','잔액은',
+      '잔액을','기초잔액은','기말잔액은','금액은','금액의','금액으로','금액을','원이며','원이고','원이',
+      '원과','원일','원은','원입니다','원가','발생','발생한','발생하는','발생은','나타내는','나타난다',
+      '보여주는','계속','현재가치는','현재가치','회사가','기업의','기업이','기업','이자율','맞는',
+      '직접','자료에서','자료에','자료는','자료이다','정보를','정의','특성','대표적','사건의','사건을',
+      '상승할','기간','가정','가정한다','없지만','별도의','동시에','자료를','이에'
+    ]);
 
     let map = {};
 
@@ -553,7 +464,6 @@
       const seen = new Set();
 
       tokens.forEach(word => {
-        // 한글 단어만 대상으로
         if (!/^[가-힣]+$/.test(word)) return;
         if (stopWords.has(word)) return;
         if (seen.has(word)) return;
@@ -564,7 +474,6 @@
       });
     });
 
-    // 최소 문제수 미달 키워드 제거
     Object.keys(map).forEach(k => {
       if (map[k].length < MIN_KEYWORD_QUESTIONS) delete map[k];
     });
@@ -588,7 +497,6 @@
       return;
     }
 
-    // 검색창 / 전체선택 상태 초기화
     if (keywordSearchInput) keywordSearchInput.value = '';
     if (keywordSelectAll) keywordSelectAll.checked = false;
 
@@ -600,8 +508,8 @@
       const chk = document.createElement('input');
       chk.type = 'checkbox';
       chk.value = key;
-      chk.checked = false;              // ✅ 처음에는 체크 X
-      chk.name = 'keywordCandidate';    // ✅ 선택용 name
+      chk.checked = false;              // ✅ 처음엔 전부 해제
+      chk.name = 'keywordCandidate';
 
       const txt = document.createElement('span');
       txt.textContent = `${key} (${cnt}문제)`;
@@ -633,7 +541,6 @@
     const prefix = currentKeyword ? `[키워드: ${currentKeyword}] ` : '';
     progressStatus.textContent = `${prefix}문제 ${currentIndex + 1} / ${problems.length}`;
 
-    // 객관식
     if (p.answerType === 'objective') {
       const container = document.createElement('div');
       container.className = 'options';
@@ -669,7 +576,6 @@
       answerArea.appendChild(container);
 
     } else {
-      // 주관식
       const input2 = document.createElement('input');
       input2.type = 'text';
       input2.id = 'subjectiveInput';
@@ -714,8 +620,9 @@
 
   /* ================================
      TXT 목록 불러오기 (GitHub API)
+     👉 예전(잘 되던) 심플 버전 그대로
   ================================ */
-  async function loadProblemFilesList() {
+  function loadProblemFilesList() {
     fileSelect.disabled = true;
     loadFileBtn.disabled = true;
     fileSelect.innerHTML = '<option>TXT 목록을 불러오는 중...</option>';
@@ -723,43 +630,45 @@
     const apiUrl =
       `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${PROBLEMS_PATH}?ref=${GITHUB_BRANCH}`;
 
-    try {
-      const res = await fetch(apiUrl, { cache: "no-cache" });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
+    fetch(apiUrl, { cache: "no-cache" })
+      .then(res => {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(data => {
+        const arr = Array.isArray(data) ? data : [];
+        const txtFiles = arr.filter(item =>
+          item.type === 'file' && item.name.toLowerCase().endsWith('.txt')
+        );
 
-      const data = await res.json();
-      const arr = Array.isArray(data) ? data : [];
+        if (!txtFiles.length) {
+          fileSelect.innerHTML = '<option>.txt 파일이 없습니다.</option>';
+          fileStatus.textContent = '/problems 폴더에 .txt 파일을 업로드하면 자동으로 목록에 뜹니다.';
+          return;
+        }
 
-      const txtFiles = arr.filter(item => item.type === 'file' &&
-                                        item.name.toLowerCase().endsWith('.txt'));
+        fileSelect.innerHTML = '';
+        const metaList = txtFiles.map(f => ({ name: f.name, path: f.path }));
 
-      if (!txtFiles.length) {
-        fileSelect.innerHTML = '<option>.txt 파일이 없습니다.</option>';
-        fileStatus.textContent = '/problems 폴더에 .txt 파일을 업로드하면 자동으로 목록에 뜹니다.';
-        return;
-      }
+        metaList.forEach((item, idx) => {
+          const opt = document.createElement('option');
+          opt.value = String(idx);
+          opt.textContent = `${idx + 1}. ${item.name.replace(/\.txt$/, '')}`;
+          fileSelect.appendChild(opt);
+        });
 
-      fileSelect.innerHTML = '';
-      const metaList = txtFiles.map(f => ({ name: f.name, path: f.path }));
+        fileSelect.dataset.files = JSON.stringify(metaList);
+        fileSelect.disabled = false;
+        loadFileBtn.disabled = false;
 
-      metaList.forEach((item, idx) => {
-        const opt = document.createElement('option');
-        opt.value = String(idx);
-        opt.textContent = `${idx + 1}. ${item.name.replace(/\.txt$/, '')}`;
-        fileSelect.appendChild(opt);
+        fileStatus.textContent =
+          `총 ${txtFiles.length}개의 TXT 파일을 찾았습니다. 선택 후 불러오기 버튼을 눌러주세요.`;
+      })
+      .catch(err => {
+        console.error(err);
+        fileSelect.innerHTML = '<option>목록을 불러올 수 없습니다.</option>';
+        fileStatus.textContent = 'GitHub API 오류: ' + err.message;
       });
-
-      fileSelect.dataset.files = JSON.stringify(metaList);
-      fileSelect.disabled = false;
-      loadFileBtn.disabled = false;
-
-      fileStatus.textContent =
-        `총 ${txtFiles.length}개의 TXT 파일을 찾았습니다. 선택 후 불러오기 버튼을 눌러주세요.`;
-    } catch (err) {
-      console.error(err);
-      fileSelect.innerHTML = '<option>목록을 불러올 수 없습니다.</option>';
-      fileStatus.textContent = 'GitHub API 오류: ' + err.message;
-    }
   }
 
   /* ================================
@@ -846,7 +755,6 @@
         questionCountStatus.textContent =
           `최대 ${allProblems.length}문제까지 풀 수 있습니다.`;
 
-        // 키워드 분석
         keywordMap = buildKeywordCandidates(allProblems);
         renderKeywordList(keywordMap);
 
@@ -868,7 +776,6 @@
       if (!isFinite(n) || n <= 0) n = allProblems.length;
       if (n > allProblems.length) n = allProblems.length;
 
-      // 셔플
       const indices = [...Array(allProblems.length).keys()];
       for (let i = indices.length - 1; i > 0; i--) {
         const k = Math.floor(Math.random() * (i + 1));
@@ -905,7 +812,6 @@
         return;
       }
 
-      // 체크된 키워드 수집
       const selectedInputs = Array.from(
         document.querySelectorAll('input[name="keywordCandidate"]:checked')
       );
@@ -916,7 +822,6 @@
         return;
       }
 
-      // 랜덤 키워드 선택
       const key = selectedKeys[Math.floor(Math.random() * selectedKeys.length)];
       const indices = [...keywordMap[key]];
 
@@ -925,7 +830,6 @@
         return;
       }
 
-      // 섞기
       for (let i = indices.length - 1; i > 0; i--) {
         const k = Math.floor(Math.random() * (i + 1));
         [indices[i], indices[k]] = [indices[k], indices[i]];
@@ -1084,7 +988,9 @@
 
       const a = document.createElement("a");
       const base =
-        currentFileMeta?.name?.replace(/\.txt$/, "") || "오답노트";
+        (currentFileMeta && currentFileMeta.name
+          ? currentFileMeta.name.replace(/\.txt$/, "")
+          : "오답노트");
       a.href = url;
       a.download = base + "_오답노트.txt";
 
@@ -1107,31 +1013,34 @@
     });
 
     /* =====================================
-       🔎 키워드 검색 기능
+       🔎 키워드 검색 기능 (null 방지)
     ===================================== */
-    keywordSearchInput.addEventListener('input', () => {
-      const term = keywordSearchInput.value.trim().toLowerCase();
-      const labels = keywordListEl.querySelectorAll('label');
-      labels.forEach(label => {
-        const text = label.textContent.toLowerCase();
-        label.style.display = text.includes(term) ? '' : 'none';
+    if (keywordSearchInput) {
+      keywordSearchInput.addEventListener('input', () => {
+        const term = keywordSearchInput.value.trim().toLowerCase();
+        const labels = keywordListEl.querySelectorAll('label');
+        labels.forEach(label => {
+          const text = label.textContent.toLowerCase();
+          label.style.display = text.includes(term) ? '' : 'none';
+        });
       });
-    });
+    }
 
     /* =====================================
-       ✅ 전체선택/해제 체크박스
+       ✅ 전체선택/해제 체크박스 (null 방지)
     ===================================== */
-    keywordSelectAll.addEventListener('change', () => {
-      const checked = keywordSelectAll.checked;
-      const checkboxes = keywordListEl.querySelectorAll('input[name="keywordCandidate"]');
-      checkboxes.forEach(chk => {
-        // 검색으로 숨겨진 건 그대로 두고, 보이는 것만 적용
-        const label = chk.closest('label');
-        if (label && label.style.display !== 'none') {
-          chk.checked = checked;
-        }
+    if (keywordSelectAll) {
+      keywordSelectAll.addEventListener('change', () => {
+        const checked = keywordSelectAll.checked;
+        const checkboxes = keywordListEl.querySelectorAll('input[name="keywordCandidate"]');
+        checkboxes.forEach(chk => {
+          const label = chk.closest('label');
+          if (label && label.style.display !== 'none') {
+            chk.checked = checked;
+          }
+        });
       });
-    });
+    }
 
     /* =====================================
        최초 실행 시 TXT 파일 목록 로딩
