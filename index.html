@@ -101,6 +101,15 @@
       background: #ffe4e4;
       color: #c23b3b;
     }
+    .btn-row {
+      display: flex;
+      flex-direction: row;
+      gap: 8px;
+    }
+    .btn-row button {
+      flex: 1 1 0;
+      margin-bottom: 0;
+    }
   </style>
 </head>
 <body>
@@ -120,8 +129,12 @@
     <div id="questionCountArea" style="display:none; margin-top:10px;">
       <label>2️⃣ 몇 문제 풀까요? (숫자로 입력)</label>
       <input type="number" id="questionCountInput" min="1" step="1" />
-      <button id="startQuizBtn">풀기 시작</button>
+      <div class="btn-row" style="margin-top:4px;">
+        <button id="startQuizBtn">랜덤으로 풀기 시작</button>
+        <button id="keywordQuizBtn" class="secondary" disabled>키워드별로 풀어보기</button>
+      </div>
       <div class="status" id="questionCountStatus"></div>
+      <div class="status" id="keywordStatus"></div>
     </div>
   </div>
 
@@ -144,20 +157,21 @@
   </div>
 
   <script>
-    // ========== 설정 ==========
-    const GITHUB_OWNER = 'eumditravel-oss';
-    const GITHUB_REPO  = 'Certification_Exam_Preparation';
+    // ========== GitHub 설정 ==========
+    const GITHUB_OWNER  = 'eumditravel-oss';
+    const GITHUB_REPO   = 'Certification_Exam_Preparation';
     const GITHUB_BRANCH = 'main';
     const PROBLEMS_PATH = 'problems';
 
-    // DOM 요소
+    // ===== DOM 요소 =====
     let setupCard;
     let fileSelect, loadFileBtn, fileStatus;
     let questionCountArea, questionCountInput, startQuizBtn, questionCountStatus;
+    let keywordQuizBtn, keywordStatus;
     let questionCard, questionTextEl, answerArea, submitAnswerBtn, nextQuestionBtn, answerStatus, progressStatus;
     let resultCard, resultSummary, downloadWrongBtn, restartBtn;
 
-    // 상태 변수
+    // ===== 상태 변수 =====
     let allProblems = [];
     let problems = [];
     let currentIndex = 0;
@@ -166,6 +180,12 @@
     let wrongList = [];
     let currentFileMeta = null;
 
+    // 키워드 인덱스
+    let keywordMap = null;   // { 키워드: [문제 index, ...] }
+    let currentKeyword = null;
+    const MIN_KEYWORD_QUESTIONS = 3;
+
+    // circled number → 일반 숫자
     const CIRCLED_TO_NUM = {
       '①':1,'②':2,'③':3,'④':4,'⑤':5,'⑥':6,'⑦':7,'⑧':8,'⑨':9
     };
@@ -173,39 +193,36 @@
       return CIRCLED_TO_NUM[ch] || null;
     }
 
-    // ===== 문제 텍스트 포맷팅 (안정형: [ ] / [[ ]] ) =====
+    // ===== 문제 텍스트 포맷팅 ([], [[ ]]) =====
     function formatQuestionText(q) {
       if (!q) return '';
       let html = q;
 
       // [[ ... ]] → 표
       html = html.replace(/\[\[([\s\S]*?)\]\]/g, function(match, inner) {
-        const rows = inner.split(/\n/).map(function(r){return r.trim();}).filter(function(r){return r;});
+        const rows = inner.split(/\n/).map(r => r.trim()).filter(r => r);
         if (!rows.length) return '';
-        const trHtml = rows.map(function(row, rowIndex){
-          const cells = row.split(/\s*\|\s*/).map(function(c){return c.trim();});
+        const trHtml = rows.map((row, rowIndex) => {
+          const cells = row.split(/\s*\|\s*/).map(c => c.trim());
           const tag = (rowIndex === 0 ? 'th' : 'td');
-          const tds = cells.map(function(c){
-            return '<' + tag + ' style="border:1px solid #999; padding:4px 8px; text-align:center;">'
-                   + c + '</' + tag + '>';
-          }).join('');
-          return '<tr>' + tds + '</tr>';
+          const tds = cells.map(c =>
+            `<${tag} style="border:1px solid #999; padding:4px 8px; text-align:center;">${c}</${tag}>`
+          ).join('');
+          return `<tr>${tds}</tr>`;
         }).join('');
-        return '<br><table style="border-collapse:collapse;margin:6px 0;font-size:0.9rem;"><tbody>'
-               + trHtml + '</tbody></table><br>';
+        return `<br><table style="border-collapse:collapse;margin:6px 0;font-size:0.9rem;"><tbody>${trHtml}</tbody></table><br>`;
       });
 
       // [ ... ] → 자료 박스 (항목 구분은 /)
       html = html.replace(/\[([\s\S]*?)\]/g, function(match, inner) {
-        const parts = inner.split(/\s*\/\s*/).map(function(p){return p.trim();}).filter(function(p){return p;});
+        const parts = inner.split(/\s*\/\s*/).map(p => p.trim()).filter(p => p);
         if (!parts.length) return match;
-        const itemsHtml = parts.map(function(p){
-          return '<div style="margin:2px 0;">· ' + p + '</div>';
-        }).join('');
-        return '<br><div style="display:inline-block;padding:8px 12px;border:1px solid #555;border-radius:4px;background:#fafafa;margin:4px 0;">'
-               + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));column-gap:32px;">'
-               + itemsHtml
-               + '</div></div><br>';
+        const itemsHtml = parts.map(p => `<div style="margin:2px 0;">· ${p}</div>`).join('');
+        return `<br><div style="display:inline-block;padding:8px 12px;border:1px solid #555;border-radius:4px;background:#fafafa;margin:4px 0;">
+                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));column-gap:32px;">
+                    ${itemsHtml}
+                  </div>
+                </div><br>`;
       });
 
       return html.replace(/\n/g, '<br>');
@@ -215,22 +232,22 @@
     function parseProblems(text) {
       const blocks = text
         .split(/\n\s*\n/g)
-        .map(function(b){ return b.trim(); })
-        .filter(function(b){ return b.length > 0; });
+        .map(b => b.trim())
+        .filter(b => b.length > 0);
 
       const parsed = [];
 
-      blocks.forEach(function(block){
+      blocks.forEach(block => {
         const lines = block.split('\n')
-          .map(function(l){ return l.trim(); })
-          .filter(function(l){ return l !== ''; });
+          .map(l => l.trim())
+          .filter(l => l !== '');
         if (!lines.length) return;
 
         let answerLineIndex = -1;
         let answerRaw = '';
         let explanation = '';
 
-        lines.forEach(function(line, i){
+        lines.forEach((line, i) => {
           const m = line.match(/^정답\s*[:：]\s*(.+)$/);
           if (m) {
             answerLineIndex = i;
@@ -265,8 +282,8 @@
 
         let options = [];
 
-        // 1차: 줄 단위 보기
-        optionLines.forEach(function(l){
+        // 줄 단위 보기 (1., 1), ① ...)
+        optionLines.forEach(l => {
           let m = l.match(/^(\d+)[\.\)\-\s]\s*(.+)$/);
           if (m) {
             options.push(m[2].trim());
@@ -279,7 +296,7 @@
           }
         });
 
-        // 2차: 한 줄에 1) 2) 3) 4) ...
+        // 한 줄에 1) 2) 3) 4) ...
         if (options.length <= 1 && optionLines.length > 0) {
           const joined = optionLines.join(' ').replace(/\s+/g, ' ').trim();
           const markerRegex = /(①|②|③|④|⑤|⑥|⑦|⑧|⑨|[1-9]\))/g;
@@ -328,6 +345,43 @@
       return parsed;
     }
 
+    // ===== 키워드 인덱스 만들기 =====
+    function buildKeywordIndex(problems) {
+      const stopWords = new Set([
+        '다음','다음의','다음중','다음중에서','다음은','다음에','다음사항','중','다','것은','어느','옳은',
+        '옳지','않은','아닌','설명으로','설명','관련된','관련하여','가장','보기','대한','회계에서',
+        '및','또는','있는','없는','다한','사항','기출','문제'
+      ]);
+      const map = {};
+
+      problems.forEach((p, idx) => {
+        const base = (p.question || '') + ' ' + (p.explanation || '');
+        let cleaned = base
+          .replace(/[0-9\(\)\[\]\{\}\.,\/\\\-\+:%=<>]/g, ' ')
+          .replace(/[·•∙ㆍ]/g, ' ')
+          .replace(/\s+/g, ' ');
+        const tokens = cleaned.split(' ')
+          .map(t => t.trim())
+          .filter(t => t.length >= 2);
+
+        const seen = new Set();
+        tokens.forEach(word => {
+          if (stopWords.has(word)) return;
+          if (seen.has(word)) return;
+          seen.add(word);
+          if (!map[word]) map[word] = [];
+          map[word].push(idx);
+        });
+      });
+
+      // 너무 적게 나온 키워드는 제거
+      Object.keys(map).forEach(k => {
+        if (map[k].length < MIN_KEYWORD_QUESTIONS) delete map[k];
+      });
+
+      return map;
+    }
+
     // ===== 문제 표시 =====
     function showCurrentQuestion() {
       if (currentIndex < 0 || currentIndex >= problems.length) {
@@ -339,15 +393,17 @@
       questionTextEl.innerHTML = formatQuestionText(p.question);
       answerArea.innerHTML = '';
       answerStatus.textContent = '';
-      progressStatus.textContent = '문제 ' + (currentIndex + 1) + ' / ' + problems.length;
+
+      const prefix = currentKeyword ? `[키워드: ${currentKeyword}] ` : '';
+      progressStatus.textContent = `${prefix}문제 ${currentIndex + 1} / ${problems.length}`;
 
       if (p.answerType === 'objective') {
         const container = document.createElement('div');
         container.className = 'options';
-        p.options.forEach(function(opt, idx){
+        p.options.forEach((opt, idx) => {
           const div = document.createElement('div');
           div.className = 'option-item';
-          const id = 'opt_' + currentIndex + '_' + (idx + 1);
+          const id = `opt_${currentIndex}_${idx + 1}`;
           const input = document.createElement('input');
           input.type = 'radio';
           input.name = 'option';
@@ -356,11 +412,10 @@
           const label = document.createElement('label');
           label.setAttribute('for', id);
           label.className = 'option-label';
-          label.textContent = (idx + 1) + '. ' + opt;
-          label.addEventListener('click', function(){
+          label.textContent = `${idx + 1}. ${opt}`;
+          label.addEventListener('click', () => {
             input.checked = true;
-            const all = document.querySelectorAll('.option-label');
-            Array.prototype.forEach.call(all, function(el){ el.classList.remove('selected'); });
+            document.querySelectorAll('.option-label').forEach(el => el.classList.remove('selected'));
             label.classList.add('selected');
           });
           div.appendChild(input);
@@ -390,10 +445,11 @@
       const rate = total > 0 ? Math.round(correctCount / total * 100) : 0;
 
       let html = '';
-      html += '<p>총 <strong>' + total + '</strong>문제 중 '
-           + '<strong>' + correctCount + '</strong>문제 정답, '
-           + '<strong>' + wrongCount + '</strong>문제 오답입니다.</p>';
-      html += '<p>정답률: <strong>' + rate + '%</strong></p>';
+      if (currentKeyword) {
+        html += `<p>이번 세트는 <strong>"${currentKeyword}"</strong> 키워드로 묶인 문제들입니다.</p>`;
+      }
+      html += `<p>총 <strong>${total}</strong>문제 중 <strong>${correctCount}</strong>문제 정답, <strong>${wrongCount}</strong>문제 오답입니다.</p>`;
+      html += `<p>정답률: <strong>${rate}%</strong></p>`;
 
       if (wrongList.length > 0) {
         html += '<p>오답 목록은 [오답노트 다운로드] 버튼을 눌러 TXT 파일로 저장할 수 있습니다.</p>';
@@ -411,20 +467,16 @@
       loadFileBtn.disabled = true;
       fileSelect.innerHTML = '<option>TXT 목록을 불러오는 중...</option>';
 
-      const apiUrl = 'https://api.github.com/repos/'
-          + GITHUB_OWNER + '/'
-          + GITHUB_REPO + '/contents/'
-          + PROBLEMS_PATH + '?ref=' + GITHUB_BRANCH;
+      const apiUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${PROBLEMS_PATH}?ref=${GITHUB_BRANCH}`;
 
       try {
         const res = await fetch(apiUrl, { cache: 'no-cache' });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
         const arr = Array.isArray(data) ? data : [];
-        const txtFiles = arr.filter(function(item){
-          return item.type === 'file'
-                 && item.name.toLowerCase().endsWith('.txt');
-        });
+        const txtFiles = arr.filter(item =>
+          item.type === 'file' && item.name.toLowerCase().endsWith('.txt')
+        );
 
         if (!txtFiles.length) {
           fileSelect.innerHTML = '<option>.txt 파일이 없습니다.</option>';
@@ -433,20 +485,20 @@
         }
 
         fileSelect.innerHTML = '';
-        txtFiles.forEach(function(item, idx){
+        txtFiles.forEach((item, idx) => {
           const opt = document.createElement('option');
           opt.value = String(idx);
-          opt.textContent = (idx + 1) + '. ' + item.name.replace(/\.txt$/i,'');
+          opt.textContent = `${idx + 1}. ${item.name.replace(/\.txt$/i,'')}`;
           fileSelect.appendChild(opt);
         });
 
         fileSelect.dataset.files = JSON.stringify(
-          txtFiles.map(function(f){ return { name: f.name, path: f.path }; })
+          txtFiles.map(f => ({ name: f.name, path: f.path }))
         );
 
         fileSelect.disabled = false;
         loadFileBtn.disabled = false;
-        fileStatus.textContent = '총 ' + txtFiles.length + '개의 TXT 파일을 찾았습니다. 하나를 선택 후 [불러오기]를 눌러주세요.';
+        fileStatus.textContent = `총 ${txtFiles.length}개의 TXT 파일을 찾았습니다. 하나를 선택 후 [불러오기]를 눌러주세요.`;
       } catch (err) {
         console.error(err);
         fileSelect.innerHTML = '<option>목록을 불러올 수 없습니다.</option>';
@@ -456,44 +508,44 @@
 
     // ===== DOMContentLoaded: 요소 연결 + 이벤트 등록 =====
     window.addEventListener('DOMContentLoaded', function(){
-      // 요소 연결
-      setupCard = document.getElementById('setupCard');
-      fileSelect = document.getElementById('fileSelect');
-      loadFileBtn = document.getElementById('loadFileBtn');
-      fileStatus = document.getElementById('fileStatus');
+      setupCard          = document.getElementById('setupCard');
+      fileSelect         = document.getElementById('fileSelect');
+      loadFileBtn        = document.getElementById('loadFileBtn');
+      fileStatus         = document.getElementById('fileStatus');
 
-      questionCountArea = document.getElementById('questionCountArea');
+      questionCountArea  = document.getElementById('questionCountArea');
       questionCountInput = document.getElementById('questionCountInput');
-      startQuizBtn = document.getElementById('startQuizBtn');
-      questionCountStatus = document.getElementById('questionCountStatus');
+      startQuizBtn       = document.getElementById('startQuizBtn');
+      questionCountStatus= document.getElementById('questionCountStatus');
 
-      questionCard = document.getElementById('questionCard');
-      questionTextEl = document.getElementById('questionText');
-      answerArea = document.getElementById('answerArea');
-      submitAnswerBtn = document.getElementById('submitAnswerBtn');
-      nextQuestionBtn = document.getElementById('nextQuestionBtn');
-      answerStatus = document.getElementById('answerStatus');
-      progressStatus = document.getElementById('progressStatus');
+      keywordQuizBtn     = document.getElementById('keywordQuizBtn');
+      keywordStatus      = document.getElementById('keywordStatus');
 
-      resultCard = document.getElementById('resultCard');
-      resultSummary = document.getElementById('resultSummary');
-      downloadWrongBtn = document.getElementById('downloadWrongBtn');
-      restartBtn = document.getElementById('restartBtn');
+      questionCard       = document.getElementById('questionCard');
+      questionTextEl     = document.getElementById('questionText');
+      answerArea         = document.getElementById('answerArea');
+      submitAnswerBtn    = document.getElementById('submitAnswerBtn');
+      nextQuestionBtn    = document.getElementById('nextQuestionBtn');
+      answerStatus       = document.getElementById('answerStatus');
+      progressStatus     = document.getElementById('progressStatus');
 
-      // 파일 불러오기 버튼
+      resultCard         = document.getElementById('resultCard');
+      resultSummary      = document.getElementById('resultSummary');
+      downloadWrongBtn   = document.getElementById('downloadWrongBtn');
+      restartBtn         = document.getElementById('restartBtn');
+
+      // TXT 파일 불러오기
       loadFileBtn.addEventListener('click', async function(){
         const filesMeta = JSON.parse(fileSelect.dataset.files || '[]');
         const idx = Number(fileSelect.value);
         if (!filesMeta[idx]) return;
         currentFileMeta = filesMeta[idx];
+        currentKeyword = null;
+        keywordMap = null;
 
         fileStatus.textContent = '파일 읽는 중: ' + currentFileMeta.path + ' ...';
 
-        const rawUrl = 'https://raw.githubusercontent.com/'
-            + GITHUB_OWNER + '/'
-            + GITHUB_REPO + '/'
-            + GITHUB_BRANCH + '/'
-            + encodeURI(currentFileMeta.path);
+        const rawUrl = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${encodeURI(currentFileMeta.path)}`;
 
         try {
           const res = await fetch(rawUrl, { cache: 'no-cache' });
@@ -510,21 +562,35 @@
           if (!allProblems.length) {
             fileStatus.textContent = '이 TXT에서 인식된 문제가 없습니다. 형식을 확인해주세요.';
             questionCard.style.display = 'none';
-            resultCard.style.display = 'none';
+            resultCard.style.display   = 'none';
             questionCountArea.style.display = 'none';
             return;
           }
 
-          fileStatus.textContent = currentFileMeta.name + ' 에서 총 '
-            + allProblems.length + '문제를 불러왔습니다. 아래에 풀 문제 수를 입력한 뒤 [풀기 시작]을 눌러주세요.';
+          fileStatus.textContent =
+            `${currentFileMeta.name} 에서 총 ${allProblems.length}문제를 불러왔습니다. 아래에 풀 문제 수를 입력한 뒤 [랜덤으로 풀기 시작]을 눌러주세요.`;
 
+          // 랜덤 N개 모드 설정
           questionCountArea.style.display = 'block';
           questionCountInput.value = allProblems.length;
-          questionCountInput.max = allProblems.length;
-          questionCountStatus.textContent = '최대 ' + allProblems.length + '문제까지 풀 수 있습니다.';
+          questionCountInput.max   = allProblems.length;
+          questionCountStatus.textContent = `최대 ${allProblems.length}문제까지 풀 수 있습니다.`;
+
+          // 키워드 인덱스 만들기
+          keywordMap = buildKeywordIndex(allProblems);
+          const keywords = Object.keys(keywordMap || {});
+          if (keywords.length > 0) {
+            keywordQuizBtn.disabled = false;
+            keywordStatus.textContent =
+              `자동 추출된 키워드 ${keywords.length}개가 있습니다. [키워드별로 풀어보기]를 누르면 이 중 하나를 무작위로 골라 출제합니다.`;
+          } else {
+            keywordQuizBtn.disabled = true;
+            keywordStatus.textContent =
+              '의미 있는 키워드를 충분히 찾지 못했습니다. 이 파일은 랜덤 출제만 가능합니다.';
+          }
 
           questionCard.style.display = 'none';
-          resultCard.style.display = 'none';
+          resultCard.style.display   = 'none';
         } catch (err) {
           console.error(err);
           fileStatus.textContent = '파일을 읽는 중 오류가 발생했습니다: ' + err.message;
@@ -532,7 +598,7 @@
         }
       });
 
-      // 풀기 시작 버튼 → 설정 페이지 숨기고 문제 페이지로 전환
+      // 랜덤 N개 모드
       startQuizBtn.addEventListener('click', function(){
         if (!allProblems || !allProblems.length) {
           alert('먼저 TXT 파일을 불러와 주세요.');
@@ -555,20 +621,68 @@
           indices[j] = tmp;
         }
         const picked = indices.slice(0, n);
-        problems = picked.map(function(i){ return allProblems[i]; });
+        problems = picked.map(i => allProblems[i]);
 
         currentIndex = 0;
         solvedCount = 0;
         correctCount = 0;
         wrongList = [];
+        currentKeyword = null;
 
-        questionCountStatus.textContent = '총 ' + allProblems.length + '문제 중 랜덤으로 '
-          + problems.length + '문제를 선택했습니다.';
-
-        // 페이지 전환 느낌: 설정 카드 숨기고 문제 카드만 보이게
-        setupCard.style.display = 'none';
+        setupCard.style.display  = 'none';
         questionCard.style.display = 'block';
-        resultCard.style.display = 'none';
+        resultCard.style.display   = 'none';
+        showCurrentQuestion();
+        window.scrollTo({top: 0, behavior: 'smooth'});
+      });
+
+      // 키워드별 모드
+      keywordQuizBtn.addEventListener('click', function(){
+        if (!keywordMap) {
+          alert('사용 가능한 키워드가 없습니다.');
+          return;
+        }
+        const keys = Object.keys(keywordMap);
+        if (!keys.length) {
+          alert('사용 가능한 키워드가 없습니다.');
+          return;
+        }
+
+        // 랜덤 키워드 선택
+        const randKey = keys[Math.floor(Math.random() * keys.length)];
+        const indices = keywordMap[randKey].slice();
+        if (!indices.length) {
+          alert('해당 키워드에 연결된 문제가 없습니다.');
+          return;
+        }
+
+        // 섞고, 몇 문제 풀지 물어보기
+        for (let i = indices.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          const tmp = indices[i];
+          indices[i] = indices[j];
+          indices[j] = tmp;
+        }
+        const maxN = indices.length;
+        let n = parseInt(
+          prompt(`선택된 키워드 "${randKey}" 관련 문제는 총 ${maxN}문제입니다.\n몇 문제 풀까요? (1~${maxN})`, Math.min(10, maxN)),
+          10
+        );
+        if (!isFinite(n) || n <= 0) n = maxN;
+        if (n > maxN) n = maxN;
+
+        const picked = indices.slice(0, n);
+        problems = picked.map(i => allProblems[i]);
+
+        currentIndex = 0;
+        solvedCount = 0;
+        correctCount = 0;
+        wrongList = [];
+        currentKeyword = randKey;
+
+        setupCard.style.display    = 'none';
+        questionCard.style.display = 'block';
+        resultCard.style.display   = 'none';
         showCurrentQuestion();
         window.scrollTo({top: 0, behavior: 'smooth'});
       });
@@ -601,7 +715,7 @@
         if (p.answerType === 'objective') {
           isCorrect = (userAnswer === p.answer);
         } else {
-          const norm = function(s){ return String(s).replace(/\s+/g,''); };
+          const norm = s => String(s).replace(/\s+/g,'');
           isCorrect = (norm(userAnswer) === norm(p.answer));
         }
 
@@ -609,17 +723,15 @@
           correctCount++;
           let html = '<span class="badge badge-ok">정답</span> 잘 풀었어요!';
           if (p.explanation) {
-            html += '<br><br><strong>해설</strong><br>'
-                 + p.explanation.replace(/\n/g,'<br>');
+            html += '<br><br><strong>해설</strong><br>' + p.explanation.replace(/\n/g,'<br>');
           }
           answerStatus.innerHTML = html;
         } else {
-          let html = '<span class="badge badge-wrong">오답</span> 정답은 '
-                   + (p.answerType === 'objective' ? (p.answer + '번') : String(p.answer))
-                   + ' 입니다.';
+          let html = `<span class="badge badge-wrong">오답</span> 정답은 ${
+            p.answerType === 'objective' ? (p.answer + '번') : String(p.answer)
+          } 입니다.`;
           if (p.explanation) {
-            html += '<br><br><strong>해설</strong><br>'
-                 + p.explanation.replace(/\n/g,'<br>');
+            html += '<br><br><strong>해설</strong><br>' + p.explanation.replace(/\n/g,'<br>');
           }
           answerStatus.innerHTML = html;
 
@@ -638,7 +750,8 @@
 
         submitAnswerBtn.disabled = true;
         nextQuestionBtn.disabled = false;
-        nextQuestionBtn.textContent = (currentIndex === problems.length - 1) ? '결과 보기' : '다음 문제 ▶';
+        nextQuestionBtn.textContent =
+          (currentIndex === problems.length - 1) ? '결과 보기' : '다음 문제 ▶';
       });
 
       // 다음 문제 / 결과 보기
@@ -660,9 +773,12 @@
         }
         const lines = [];
         lines.push('▶ 오답노트 생성시각: ' + new Date().toLocaleString());
+        if (currentKeyword) {
+          lines.push('▶ 키워드 모드: ' + currentKeyword);
+        }
         lines.push('');
 
-        wrongList.forEach(function(item){
+        wrongList.forEach(item => {
           lines.push('----------------------------------------');
           if (item.fileName) lines.push('[파일] ' + item.fileName);
           lines.push('[문제번호] ' + item.index);
@@ -670,7 +786,7 @@
           lines.push(item.question);
           if (item.options && item.options.length) {
             lines.push('[보기]');
-            item.options.forEach(function(opt, idx){
+            item.options.forEach((opt, idx) => {
               lines.push('  ' + (idx + 1) + '. ' + opt);
             });
           }
@@ -699,9 +815,10 @@
 
       // 처음으로 버튼 → 설정 페이지로 복귀
       restartBtn.addEventListener('click', function(){
-        setupCard.style.display = 'block';
+        setupCard.style.display    = 'block';
         questionCard.style.display = 'none';
-        resultCard.style.display = 'none';
+        resultCard.style.display   = 'none';
+        currentKeyword = null;
         window.scrollTo({top: 0, behavior: 'smooth'});
       });
 
