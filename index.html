@@ -110,12 +110,28 @@
       flex: 1 1 0;
       margin-bottom: 0;
     }
+    #keywordList {
+      max-height: 150px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 6px;
+      font-size: 0.9rem;
+      background: #fafafa;
+    }
+    #keywordList label {
+      font-weight: 400;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 4px;
+    }
   </style>
 </head>
 <body>
   <h1>기출문제 풀이</h1>
 
-  <!-- 1. TXT 선택 + 문제 수 입력 (설정 페이지) -->
+  <!-- 1. TXT 선택 + 모드 설정 -->
   <div class="card" id="setupCard">
     <label>1️⃣ 문제집(TXT 파일) 선택</label>
     <select id="fileSelect" disabled>
@@ -135,10 +151,19 @@
       </div>
       <div class="status" id="questionCountStatus"></div>
       <div class="status" id="keywordStatus"></div>
+
+      <!-- 자동 후보 키워드 선택 영역 -->
+      <div id="keywordSelectArea" style="display:none; margin-top:10px;">
+        <label>3️⃣ 자동 추출된 키워드 후보 (원하는 것만 선택)</label>
+        <div id="keywordList"></div>
+        <div class="status" id="keywordHint">
+          기본으로 전부 선택되어 있습니다. 쓸모없는 키워드는 체크 해제 후 [키워드별로 풀어보기]를 눌러주세요.
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- 2. 문제 영역 (풀이 페이지) -->
+  <!-- 2. 문제 풀이 영역 -->
   <div class="card" id="questionCard" style="display:none;">
     <div class="status" id="progressStatus"></div>
     <div class="question-text" id="questionText"></div>
@@ -157,21 +182,22 @@
   </div>
 
   <script>
-    // ========== GitHub 설정 ==========
+    // ===== GitHub 설정 =====
     const GITHUB_OWNER  = 'eumditravel-oss';
     const GITHUB_REPO   = 'Certification_Exam_Preparation';
     const GITHUB_BRANCH = 'main';
     const PROBLEMS_PATH = 'problems';
 
-    // ===== DOM 요소 =====
+    // ===== DOM =====
     let setupCard;
     let fileSelect, loadFileBtn, fileStatus;
     let questionCountArea, questionCountInput, startQuizBtn, questionCountStatus;
     let keywordQuizBtn, keywordStatus;
+    let keywordSelectArea, keywordListEl, keywordHint;
     let questionCard, questionTextEl, answerArea, submitAnswerBtn, nextQuestionBtn, answerStatus, progressStatus;
     let resultCard, resultSummary, downloadWrongBtn, restartBtn;
 
-    // ===== 상태 변수 =====
+    // ===== 상태 =====
     let allProblems = [];
     let problems = [];
     let currentIndex = 0;
@@ -180,12 +206,12 @@
     let wrongList = [];
     let currentFileMeta = null;
 
-    // 키워드 인덱스
-    let keywordMap = null;   // { 키워드: [문제 index, ...] }
+    // 키워드 인덱스 (word -> [problemIndex...])
+    let keywordMap = null;
     let currentKeyword = null;
     const MIN_KEYWORD_QUESTIONS = 3;
 
-    // circled number → 일반 숫자
+    // 동그라미 숫자
     const CIRCLED_TO_NUM = {
       '①':1,'②':2,'③':3,'④':4,'⑤':5,'⑥':6,'⑦':7,'⑧':8,'⑨':9
     };
@@ -193,13 +219,13 @@
       return CIRCLED_TO_NUM[ch] || null;
     }
 
-    // ===== 문제 텍스트 포맷팅 ([], [[ ]]) =====
+    // ===== 문제 텍스트 포맷팅 =====
     function formatQuestionText(q) {
       if (!q) return '';
       let html = q;
 
-      // [[ ... ]] → 표
-      html = html.replace(/\[\[([\s\S]*?)\]\]/g, function(match, inner) {
+      // [[...]] → 표
+      html = html.replace(/\[\[([\s\S]*?)\]\]/g, (match, inner) => {
         const rows = inner.split(/\n/).map(r => r.trim()).filter(r => r);
         if (!rows.length) return '';
         const trHtml = rows.map((row, rowIndex) => {
@@ -213,8 +239,8 @@
         return `<br><table style="border-collapse:collapse;margin:6px 0;font-size:0.9rem;"><tbody>${trHtml}</tbody></table><br>`;
       });
 
-      // [ ... ] → 자료 박스 (항목 구분은 /)
-      html = html.replace(/\[([\s\S]*?)\]/g, function(match, inner) {
+      // [...] → 자료 박스
+      html = html.replace(/\[([\s\S]*?)\]/g, (match, inner) => {
         const parts = inner.split(/\s*\/\s*/).map(p => p.trim()).filter(p => p);
         if (!parts.length) return match;
         const itemsHtml = parts.map(p => `<div style="margin:2px 0;">· ${p}</div>`).join('');
@@ -282,7 +308,7 @@
 
         let options = [];
 
-        // 줄 단위 보기 (1., 1), ① ...)
+        // 줄 단위 보기
         optionLines.forEach(l => {
           let m = l.match(/^(\d+)[\.\)\-\s]\s*(.+)$/);
           if (m) {
@@ -296,7 +322,7 @@
           }
         });
 
-        // 한 줄에 1) 2) 3) 4) ...
+        // 한 줄에 1)2)3)4)...
         if (options.length <= 1 && optionLines.length > 0) {
           const joined = optionLines.join(' ').replace(/\s+/g, ' ').trim();
           const markerRegex = /(①|②|③|④|⑤|⑥|⑦|⑧|⑨|[1-9]\))/g;
@@ -345,13 +371,16 @@
       return parsed;
     }
 
-    // ===== 키워드 인덱스 만들기 =====
-    function buildKeywordIndex(problems) {
+    // ===== 키워드 후보 추출 (제외 규칙만 적용) =====
+    function buildKeywordCandidates(problems) {
       const stopWords = new Set([
         '다음','다음의','다음중','다음중에서','다음은','다음에','다음사항','중','다','것은','어느','옳은',
-        '옳지','않은','아닌','설명으로','설명','관련된','관련하여','가장','보기','대한','회계에서',
-        '및','또는','있는','없는','다한','사항','기출','문제'
-      ]);
+        '옳지','않은','아닌','설명으로','설명','관련된','관련하여','가장','보기','대한','및','또는','있는',
+        '없는','사항','기출','문제','하며','주를','에서','으로','그리고','또한','때문에','통해','인해',
+        '하여','하는','하기','되어','되어야','이때','이는','그때','예를','들어','등의','경우','다음과',
+        '같은','경우에','있어','있다','있으며'
+      });
+
       const map = {};
 
       problems.forEach((p, idx) => {
@@ -364,22 +393,65 @@
           .map(t => t.trim())
           .filter(t => t.length >= 2);
 
-        const seen = new Set();
+        const seenInThisProblem = new Set();
+
         tokens.forEach(word => {
+          // 한글 2글자 이상, stopWords 제외
+          if (!/^[가-힣]+$/.test(word)) return;
           if (stopWords.has(word)) return;
-          if (seen.has(word)) return;
-          seen.add(word);
+          if (seenInThisProblem.has(word)) return;
+
+          seenInThisProblem.add(word);
           if (!map[word]) map[word] = [];
           map[word].push(idx);
         });
       });
 
-      // 너무 적게 나온 키워드는 제거
+      // 여러 문제에 반복 등장한 것만 남기기
       Object.keys(map).forEach(k => {
-        if (map[k].length < MIN_KEYWORD_QUESTIONS) delete map[k];
+        if (map[k].length < MIN_KEYWORD_QUESTIONS) {
+          delete map[k];
+        }
       });
 
       return map;
+    }
+
+    // 키워드 후보 UI 렌더링
+    function renderKeywordList(keywordMap) {
+      keywordListEl.innerHTML = '';
+      const keys = Object.keys(keywordMap);
+      if (!keys.length) {
+        keywordSelectArea.style.display = 'none';
+        keywordStatus.textContent = '의미 있는 키워드를 충분히 찾지 못했습니다. 이 파일은 랜덤 출제만 가능합니다.';
+        keywordQuizBtn.disabled = true;
+        return;
+      }
+
+      // 출현 문제 수 기준으로 정렬 (많이 나온 것부터)
+      keys.sort((a, b) => keywordMap[b].length - keywordMap[a].length);
+
+      keys.forEach(key => {
+        const count = keywordMap[key].length;
+        const label = document.createElement('label');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.name = 'keywordCandidate';
+        checkbox.value = key;
+        checkbox.checked = true; // 기본: 다 선택
+
+        const textSpan = document.createElement('span');
+        textSpan.textContent = `${key} (${count}문제)`;
+
+        label.appendChild(checkbox);
+        label.appendChild(textSpan);
+        keywordListEl.appendChild(label);
+      });
+
+      keywordStatus.textContent =
+        `자동 추출된 키워드 후보 ${keys.length}개가 있습니다. 불필요한 키워드는 체크 해제 후 [키워드별로 풀어보기]를 눌러주세요.`;
+      keywordSelectArea.style.display = 'block';
+      keywordQuizBtn.disabled = false;
     }
 
     // ===== 문제 표시 =====
@@ -438,7 +510,7 @@
     // ===== 결과 표시 =====
     function showResult() {
       questionCard.style.display = 'none';
-      resultCard.style.display = 'block';
+      resultCard.style.display   = 'block';
 
       const total = problems.length;
       const wrongCount = total - correctCount;
@@ -461,7 +533,7 @@
       window.scrollTo({top: 0, behavior: 'smooth'});
     }
 
-    // ===== /problems 폴더에서 TXT 목록 불러오기 =====
+    // ===== /problems 폴더에서 TXT 목록 =====
     async function loadProblemFilesList() {
       fileSelect.disabled = true;
       loadFileBtn.disabled = true;
@@ -506,8 +578,8 @@
       }
     }
 
-    // ===== DOMContentLoaded: 요소 연결 + 이벤트 등록 =====
-    window.addEventListener('DOMContentLoaded', function(){
+    // ===== 초기 로드 =====
+    window.addEventListener('DOMContentLoaded', function() {
       setupCard          = document.getElementById('setupCard');
       fileSelect         = document.getElementById('fileSelect');
       loadFileBtn        = document.getElementById('loadFileBtn');
@@ -520,6 +592,9 @@
 
       keywordQuizBtn     = document.getElementById('keywordQuizBtn');
       keywordStatus      = document.getElementById('keywordStatus');
+      keywordSelectArea  = document.getElementById('keywordSelectArea');
+      keywordListEl      = document.getElementById('keywordList');
+      keywordHint        = document.getElementById('keywordHint');
 
       questionCard       = document.getElementById('questionCard');
       questionTextEl     = document.getElementById('questionText');
@@ -535,7 +610,7 @@
       restartBtn         = document.getElementById('restartBtn');
 
       // TXT 파일 불러오기
-      loadFileBtn.addEventListener('click', async function(){
+      loadFileBtn.addEventListener('click', async function() {
         const filesMeta = JSON.parse(fileSelect.dataset.files || '[]');
         const idx = Number(fileSelect.value);
         if (!filesMeta[idx]) return;
@@ -570,24 +645,15 @@
           fileStatus.textContent =
             `${currentFileMeta.name} 에서 총 ${allProblems.length}문제를 불러왔습니다. 아래에 풀 문제 수를 입력한 뒤 [랜덤으로 풀기 시작]을 눌러주세요.`;
 
-          // 랜덤 N개 모드 설정
+          // 랜덤 N개 설정
           questionCountArea.style.display = 'block';
           questionCountInput.value = allProblems.length;
           questionCountInput.max   = allProblems.length;
           questionCountStatus.textContent = `최대 ${allProblems.length}문제까지 풀 수 있습니다.`;
 
-          // 키워드 인덱스 만들기
-          keywordMap = buildKeywordIndex(allProblems);
-          const keywords = Object.keys(keywordMap || {});
-          if (keywords.length > 0) {
-            keywordQuizBtn.disabled = false;
-            keywordStatus.textContent =
-              `자동 추출된 키워드 ${keywords.length}개가 있습니다. [키워드별로 풀어보기]를 누르면 이 중 하나를 무작위로 골라 출제합니다.`;
-          } else {
-            keywordQuizBtn.disabled = true;
-            keywordStatus.textContent =
-              '의미 있는 키워드를 충분히 찾지 못했습니다. 이 파일은 랜덤 출제만 가능합니다.';
-          }
+          // 키워드 후보 생성 + UI 렌더링
+          keywordMap = buildKeywordCandidates(allProblems);
+          renderKeywordList(keywordMap);
 
           questionCard.style.display = 'none';
           resultCard.style.display   = 'none';
@@ -599,7 +665,7 @@
       });
 
       // 랜덤 N개 모드
-      startQuizBtn.addEventListener('click', function(){
+      startQuizBtn.addEventListener('click', function() {
         if (!allProblems || !allProblems.length) {
           alert('먼저 TXT 파일을 불러와 주세요.');
           return;
@@ -629,45 +695,66 @@
         wrongList = [];
         currentKeyword = null;
 
-        setupCard.style.display  = 'none';
+        setupCard.style.display    = 'none';
         questionCard.style.display = 'block';
         resultCard.style.display   = 'none';
         showCurrentQuestion();
         window.scrollTo({top: 0, behavior: 'smooth'});
       });
 
-      // 키워드별 모드
-      keywordQuizBtn.addEventListener('click', function(){
+      // 키워드별 모드 (선택된 후보 중에서만 랜덤 키워드)
+      keywordQuizBtn.addEventListener('click', function() {
         if (!keywordMap) {
           alert('사용 가능한 키워드가 없습니다.');
           return;
         }
-        const keys = Object.keys(keywordMap);
-        if (!keys.length) {
+        const allKeys = Object.keys(keywordMap);
+        if (!allKeys.length) {
           alert('사용 가능한 키워드가 없습니다.');
           return;
         }
 
-        // 랜덤 키워드 선택
-        const randKey = keys[Math.floor(Math.random() * keys.length)];
-        const indices = keywordMap[randKey].slice();
-        if (!indices.length) {
-          alert('해당 키워드에 연결된 문제가 없습니다.');
+        const selectedInputs = Array.from(
+          document.querySelectorAll('input[name="keywordCandidate"]:checked')
+        );
+        const selectedKeys = selectedInputs.map(el => el.value);
+
+        if (!selectedKeys.length) {
+          alert('먼저 사용할 키워드를 하나 이상 선택해주세요.');
           return;
         }
 
-        // 섞고, 몇 문제 풀지 물어보기
+        const randKey = selectedKeys[Math.floor(Math.random() * selectedKeys.length)];
+        const indices = keywordMap[randKey].slice();
+        if (!indices.length) {
+          alert('선택된 키워드에 연결된 문제가 없습니다.');
+          return;
+        }
+
+        // 섞기
         for (let i = indices.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           const tmp = indices[i];
           indices[i] = indices[j];
           indices[j] = tmp;
         }
+
         const maxN = indices.length;
-        let n = parseInt(
-          prompt(`선택된 키워드 "${randKey}" 관련 문제는 총 ${maxN}문제입니다.\n몇 문제 풀까요? (1~${maxN})`, Math.min(10, maxN)),
-          10
+        const defaultVal = String(Math.min(10, maxN));
+        const inputStr = prompt(
+          `선택된 키워드 "${randKey}" 관련 문제는 총 ${maxN}문제입니다.\n몇 문제 풀까요? (1~${maxN})`,
+          defaultVal
         );
+
+        // 취소 → 아무 것도 시작하지 않음
+        if (inputStr === null) {
+          alert('키워드별 풀기를 취소했습니다.');
+          currentKeyword = null;
+          window.scrollTo({top: 0, behavior: 'smooth'});
+          return;
+        }
+
+        let n = parseInt(inputStr, 10);
         if (!isFinite(n) || n <= 0) n = maxN;
         if (n > maxN) n = maxN;
 
@@ -688,7 +775,7 @@
       });
 
       // 정답 제출
-      submitAnswerBtn.addEventListener('click', function(){
+      submitAnswerBtn.addEventListener('click', function() {
         if (currentIndex < 0 || currentIndex >= problems.length) return;
         const p = problems[currentIndex];
         let userAnswer = null;
@@ -754,8 +841,8 @@
           (currentIndex === problems.length - 1) ? '결과 보기' : '다음 문제 ▶';
       });
 
-      // 다음 문제 / 결과 보기
-      nextQuestionBtn.addEventListener('click', function(){
+      // 다음 문제 / 결과
+      nextQuestionBtn.addEventListener('click', function() {
         if (currentIndex >= problems.length - 1) {
           showResult();
           return;
@@ -766,7 +853,7 @@
       });
 
       // 오답노트 다운로드
-      downloadWrongBtn.addEventListener('click', function(){
+      downloadWrongBtn.addEventListener('click', function() {
         if (!wrongList.length) {
           alert('오답이 없습니다.');
           return;
@@ -813,8 +900,8 @@
         URL.revokeObjectURL(url);
       });
 
-      // 처음으로 버튼 → 설정 페이지로 복귀
-      restartBtn.addEventListener('click', function(){
+      // 처음으로
+      restartBtn.addEventListener('click', function() {
         setupCard.style.display    = 'block';
         questionCard.style.display = 'none';
         resultCard.style.display   = 'none';
@@ -822,7 +909,6 @@
         window.scrollTo({top: 0, behavior: 'smooth'});
       });
 
-      // TXT 목록 로드
       loadProblemFilesList();
     });
   </script>
