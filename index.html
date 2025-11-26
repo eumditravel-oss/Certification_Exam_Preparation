@@ -157,9 +157,24 @@
 
       <div id="keywordSelectArea" style="display:none; margin-top:10px;">
         <label>3️⃣ 자동 추출된 키워드 후보 (원하는 것만 선택)</label>
+
+        <!-- 🔎 검색 + 전체선택 영역 -->
+        <div style="display:flex; gap:8px; align-items:center; margin-bottom:6px;">
+          <input
+            type="text"
+            id="keywordSearchInput"
+            placeholder="키워드 검색..."
+            style="flex:1; padding:6px 8px; font-size:0.9rem;"
+          />
+          <label style="font-weight:400; display:flex; align-items:center; gap:4px; white-space:nowrap;">
+            <input type="checkbox" id="keywordSelectAll" />
+            전체선택
+          </label>
+        </div>
+
         <div id="keywordList"></div>
         <div class="status" id="keywordHint">
-          기본으로 전부 선택되어 있습니다. 쓸모없는 키워드는 체크 해제 후 진행하세요.
+          키워드를 선택한 뒤 [키워드별로 풀어보기]를 눌러 주세요.
         </div>
       </div>
     </div>
@@ -200,6 +215,7 @@
   let questionCountArea, questionCountInput, startQuizBtn, questionCountStatus;
   let keywordQuizBtn, keywordStatus;
   let keywordSelectArea, keywordListEl, keywordHint;
+  let keywordSearchInput, keywordSelectAll;
 
   let questionCard, questionTextEl, answerArea, submitAnswerBtn, nextQuestionBtn, answerStatus, progressStatus;
   let resultCard, resultSummary, downloadWrongBtn, restartBtn;
@@ -518,7 +534,7 @@
       '동시에',
       '자료를',
       '이에'
-    ]);
+    });
 
     let map = {};
 
@@ -558,12 +574,13 @@
 
   /* ================================
      키워드 리스트 렌더링
-     (name="keywordCandidate" 추가)
+     - name="keywordCandidate"
+     - 초기엔 체크 없음
   ================================ */
-  function renderKeywordList(keywordMap) {
+  function renderKeywordList(keywordMapObj) {
     keywordListEl.innerHTML = '';
 
-    const keys = Object.keys(keywordMap || {});
+    const keys = Object.keys(keywordMapObj || {});
     if (!keys.length) {
       keywordSelectArea.style.display = 'none';
       keywordStatus.textContent = '사용 가능한 키워드가 없습니다.';
@@ -571,16 +588,20 @@
       return;
     }
 
-    keys.sort((a,b) => keywordMap[b].length - keywordMap[a].length);
+    // 검색창 / 전체선택 상태 초기화
+    if (keywordSearchInput) keywordSearchInput.value = '';
+    if (keywordSelectAll) keywordSelectAll.checked = false;
 
-    keys.forEach(key => {
-      const cnt = keywordMap[key].length;
+    const keysSorted = [...keys].sort((a,b) => keywordMapObj[b].length - keywordMapObj[a].length);
+
+    keysSorted.forEach(key => {
+      const cnt = keywordMapObj[key].length;
       const label = document.createElement('label');
       const chk = document.createElement('input');
       chk.type = 'checkbox';
       chk.value = key;
-      chk.checked = true;
-      chk.name = 'keywordCandidate'; // ✅ 체크박스 선택용 name
+      chk.checked = false;              // ✅ 처음에는 체크 X
+      chk.name = 'keywordCandidate';    // ✅ 선택용 name
 
       const txt = document.createElement('span');
       txt.textContent = `${key} (${cnt}문제)`;
@@ -592,7 +613,7 @@
 
     keywordSelectArea.style.display = 'block';
     keywordQuizBtn.disabled = false;
-    keywordStatus.textContent = `키워드 ${keys.length}개가 자동 감지됨`;
+    keywordStatus.textContent = `키워드 ${keysSorted.length}개가 자동 감지됨`;
   }
 
   /* ================================
@@ -760,6 +781,8 @@
     keywordSelectArea = document.getElementById("keywordSelectArea");
     keywordListEl = document.getElementById("keywordList");
     keywordHint = document.getElementById("keywordHint");
+    keywordSearchInput = document.getElementById("keywordSearchInput");
+    keywordSelectAll = document.getElementById("keywordSelectAll");
 
     questionCard = document.getElementById("questionCard");
     questionTextEl = document.getElementById("questionText");
@@ -1081,6 +1104,33 @@
 
       currentKeyword = null;
       window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+
+    /* =====================================
+       🔎 키워드 검색 기능
+    ===================================== */
+    keywordSearchInput.addEventListener('input', () => {
+      const term = keywordSearchInput.value.trim().toLowerCase();
+      const labels = keywordListEl.querySelectorAll('label');
+      labels.forEach(label => {
+        const text = label.textContent.toLowerCase();
+        label.style.display = text.includes(term) ? '' : 'none';
+      });
+    });
+
+    /* =====================================
+       ✅ 전체선택/해제 체크박스
+    ===================================== */
+    keywordSelectAll.addEventListener('change', () => {
+      const checked = keywordSelectAll.checked;
+      const checkboxes = keywordListEl.querySelectorAll('input[name="keywordCandidate"]');
+      checkboxes.forEach(chk => {
+        // 검색으로 숨겨진 건 그대로 두고, 보이는 것만 적용
+        const label = chk.closest('label');
+        if (label && label.style.display !== 'none') {
+          chk.checked = checked;
+        }
+      });
     });
 
     /* =====================================
