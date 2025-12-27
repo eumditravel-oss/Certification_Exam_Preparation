@@ -492,6 +492,13 @@
     const v = Math.max(0, Math.min(100, pct || 0));
     progressFill.style.width = v + '%';
   }
+    function normalizeTitlePrefix(text) {
+  if (!text) return '';
+  return text
+    .replace(/^\s*(\d+\s*[\.\)]\s*|[①-⑨]\s*)/, '') // 1. / 1) / ① 제거
+    .trim();
+}
+
 
   /* ================================
      문제 텍스트 포맷팅 (자료 박스/표 변환)
@@ -810,7 +817,9 @@
     }
     const p = problems[currentIndex];
 
-    questionTextEl.innerHTML = formatQuestionText(p.question);
+    const cleanQuestion = normalizeTitlePrefix(p.question);
+questionTextEl.innerHTML = formatQuestionText(cleanQuestion);
+
     answerArea.innerHTML = '';
     answerStatus.textContent = '';
 
