@@ -961,62 +961,63 @@
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
 
-    /* =====================================
-       오답노트 다운로드
-    ===================================== */
-    downloadWrongBtn.addEventListener("click", () => {
-      if (!wrongList.length) return alert("오답이 없습니다.");
+/* =====================================
+   오답노트 다운로드
+===================================== */
+downloadWrongBtn.addEventListener("click", () => {
+  if (!wrongList.length) return alert("오답이 없습니다.");
 
-      const lines = [];
-      lines.push(`▶ 오답노트: ${new Date().toLocaleString()}`);
-      if (currentKeyword) lines.push(`▶ 키워드 모드: ${currentKeyword}`);
-      lines.push("");
+  const lines = [];
+  lines.push(`▶ 오답노트: ${new Date().toLocaleString()}`);
+  if (currentKeyword) lines.push(`▶ 키워드 모드: ${currentKeyword}`);
+  lines.push("");
 
-      wrongList.forEach(item => {
-        lines.push("----------------------------------------");
-        if (item.fileName) lines.push("[파일] " + item.fileName);
-        lines.push("[문제번호] " + item.index);
-        lines.push("[문제]");
-        lines.push(item.question);
+  wrongList.forEach(item => {
+    lines.push("----------------------------------------");
+    if (item.fileName) lines.push("[파일] " + item.fileName);
+    lines.push("[문제번호] " + item.index);
+    lines.push("[문제]");
+    lines.push(item.question);
 
-        if (item.options.length) {
-          lines.push("[보기]");
-          item.options.forEach((opt, idx) => {
-            lines.push(`  ${idx + 1}. ${opt}`);
-          });
-        }
-
-        lines.push("[나의 답] " + item.userAnswer);
-        lines.push(
-          "[정답] " +
-            (item.answerType === "objective"
-              ? item.correctAnswer + "번"
-              : item.correctAnswer)
-        );
-
-        if (item.explanation) {
-          lines.push("[해설]");
-          lines.push(item.explanation);
-        }
-        lines.push("");
+    if (item.options && item.options.length) {
+      lines.push("[보기]");
+      item.options.forEach((opt, idx) => {
+        lines.push(`  ${idx + 1}. ${opt}`);
       });
+    }
 
-      const blob = new Blob([lines.join("\n")], { type: "text/plain" });
-      const url = URL.createObjectURL(blob);
+    lines.push("[나의 답] " + item.userAnswer);
+    lines.push(
+      "[정답] " +
+        (item.answerType === "objective"
+          ? item.correctAnswer + "번"
+          : String(item.correctAnswer))
+    );
 
-      const a = document.createElement("a");
-      const base =
-        (currentFileMeta && currentFileMeta.name
-          ? currentFileMeta.name.replace(/\.txt$/, "")
-          : "오답노트");
-      a.href = url;
-      a.download = base + "_오답노트.txt";
+    if (item.explanation) {
+      lines.push("[해설]");
+      lines.push(item.explanation);
+    }
+    lines.push("");
+  });
 
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    });
+  const BOM = "\uFEFF"; // UTF-8 BOM (한글 깨짐 방지)
+  const blob = new Blob([BOM + lines.join("\n")], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  const base =
+    (currentFileMeta && currentFileMeta.name
+      ? currentFileMeta.name.replace(/\.txt$/i, "")
+      : "오답노트");
+  a.href = url;
+  a.download = base + "_오답노트.txt";
+
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
 
     /* =====================================
        다시 시작 (처음 화면)
