@@ -5,197 +5,424 @@
   <title>기출문제 풀이</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      margin: 0;
-      padding: 16px;
-      background: #f5f5f5;
+    :root{
+      --bg: #0b1220;
+      --panel: rgba(255,255,255,0.08);
+      --panel2: rgba(255,255,255,0.06);
+      --card: rgba(255,255,255,0.09);
+      --border: rgba(255,255,255,0.14);
+      --text: rgba(255,255,255,0.92);
+      --muted: rgba(255,255,255,0.68);
+      --muted2: rgba(255,255,255,0.52);
+      --accent: #5aa2ff;
+      --accent2:#7dd3fc;
+      --ok:#34d399;
+      --bad:#fb7185;
+      --shadow: 0 18px 55px rgba(0,0,0,0.45);
+      --shadow2: 0 8px 22px rgba(0,0,0,0.35);
+      --radius: 16px;
+      --radius2: 12px;
+      --ring: 0 0 0 3px rgba(90,162,255,0.28);
+      --maxw: 980px;
     }
-    h1 {
-      font-size: 1.4rem;
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(1200px 600px at 15% 10%, rgba(90,162,255,0.18), transparent 55%),
+        radial-gradient(900px 500px at 80% 15%, rgba(125,211,252,0.14), transparent 55%),
+        radial-gradient(900px 700px at 45% 80%, rgba(52,211,153,0.12), transparent 60%),
+        linear-gradient(180deg, #07101f 0%, #0b1220 100%);
+      color: var(--text);
+      padding: 18px 14px 28px;
+    }
+
+    .container{
+      max-width: var(--maxw);
+      margin: 0 auto;
+    }
+
+    .topbar{
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      background: linear-gradient(180deg, rgba(11,18,32,0.92) 0%, rgba(11,18,32,0.58) 100%);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius);
+      padding: 14px 14px 12px;
+      box-shadow: var(--shadow2);
+      margin-bottom: 14px;
+    }
+
+    .title-row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
       margin-bottom: 10px;
     }
-    .card {
-      background: #ffffff;
-      border-radius: 8px;
-      padding: 16px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-      margin-bottom: 16px;
+
+    h1{
+      margin:0;
+      font-size: 1.12rem;
+      letter-spacing: 0.2px;
+      font-weight: 800;
     }
-    label {
-      font-weight: 600;
-      display: block;
-      margin-bottom: 6px;
-    }
-    select, button, input[type="text"], input[type="number"] {
-      font-size: 1rem;
-      padding: 8px 10px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-      width: 100%;
-      box-sizing: border-box;
-      margin-bottom: 8px;
-    }
-    button {
-      cursor: pointer;
-      border: none;
-      background: #0070f3;
-      color: white;
-      font-weight: 600;
-    }
-    button.secondary {
-      background: #666;
-    }
-    button:disabled {
-      background: #ccc;
-      cursor: default;
-    }
-    .question-text {
-      margin-bottom: 12px;
-      line-height: 1.5;
-    }
-    .options {
-      margin-bottom: 12px;
-    }
-    .option-item {
-      margin-bottom: 8px;
-    }
-    .option-item input[type="radio"] {
-      display: none;
-    }
-    .option-label {
-      display: block;
-      padding: 10px 12px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      background: #fafafa;
-      transition: background 0.15s, border-color 0.15s;
-      cursor: pointer;
-    }
-    .option-label.selected {
-      border-color: #0070f3;
-      background: #e6f0ff;
-    }
-    .status {
-      font-size: 0.9rem;
-      color: #555;
-      margin-top: 6px;
-    }
-    .result {
-      font-size: 0.95rem;
-      line-height: 1.5;
-    }
-    .badge {
-      display: inline-block;
-      font-size: 0.8rem;
-      padding: 3px 8px;
+
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 6px 10px;
       border-radius: 999px;
-      background: #eee;
-      margin-right: 6px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: var(--muted);
+      font-size: 0.86rem;
+      white-space: nowrap;
     }
-    .badge-ok {
-      background: #e3f7e3;
-      color: #1b7c1b;
-    }
-    .badge-wrong {
-      background: #ffe4e4;
-      color: #c23b3b;
-    }
-    .btn-row {
-      display: flex;
-      flex-direction: row;
+
+    .progress-wrap{
+      display:flex;
+      flex-direction: column;
       gap: 8px;
     }
-    .btn-row button {
-      flex: 1 1 0;
-      margin-bottom: 0;
-    }
-    #keywordList {
-      max-height: 150px;
-      overflow-y: auto;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      padding: 6px;
+
+    .progress-meta{
+      display:flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--muted);
       font-size: 0.9rem;
-      background: #fafafa;
     }
-    #keywordList label {
-      font-weight: 400;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      margin-bottom: 4px;
+
+    .progress-bar{
+      width:100%;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.10);
+      overflow: hidden;
     }
+
+    .progress-fill{
+      height:100%;
+      width:0%;
+      background: linear-gradient(90deg, var(--accent) 0%, var(--accent2) 45%, rgba(52,211,153,0.85) 100%);
+      border-radius: 999px;
+      transition: width 180ms ease;
+    }
+
+    .card{
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow);
+      margin-bottom: 14px;
+    }
+
+    .card h2{
+      margin: 0 0 10px;
+      font-size: 1.05rem;
+      letter-spacing: .2px;
+    }
+
+    label{
+      font-weight: 700;
+      display:block;
+      margin-bottom: 8px;
+      color: rgba(255,255,255,0.86);
+    }
+
+    select, input[type="text"], input[type="number"]{
+      font-size: 1rem;
+      padding: 11px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.14);
+      width: 100%;
+      background: rgba(0,0,0,0.24);
+      color: var(--text);
+      outline: none;
+    }
+
+    select:focus, input[type="text"]:focus, input[type="number"]:focus{
+      box-shadow: var(--ring);
+      border-color: rgba(90,162,255,0.5);
+    }
+
+    button{
+      width:100%;
+      font-size: 1rem;
+      padding: 12px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.14);
+      cursor: pointer;
+      font-weight: 800;
+      background: linear-gradient(180deg, rgba(90,162,255,0.95) 0%, rgba(63,127,255,0.92) 100%);
+      color: #081225;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.28);
+      transition: transform 120ms ease, filter 120ms ease, background 120ms ease;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button:hover{ filter: brightness(1.03); }
+    button:active{ transform: translateY(1px); }
+    button.secondary{
+      background: rgba(255,255,255,0.08);
+      color: var(--text);
+    }
+    button:disabled{
+      opacity: 0.45;
+      cursor: default;
+      transform: none;
+    }
+
+    .btn-row{
+      display:flex;
+      gap: 10px;
+    }
+    .btn-row button{
+      flex: 1 1 0;
+    }
+
+    .status{
+      font-size: 0.92rem;
+      color: var(--muted);
+      margin-top: 8px;
+      line-height: 1.45;
+    }
+
+    code{
+      background: rgba(0,0,0,0.22);
+      border: 1px solid rgba(255,255,255,0.10);
+      padding: 2px 6px;
+      border-radius: 8px;
+      color: rgba(255,255,255,0.86);
+    }
+
+    .question-text{
+      line-height: 1.7;
+      font-size: 1.05rem;
+      color: rgba(255,255,255,0.92);
+      letter-spacing: 0.1px;
+      margin-bottom: 14px;
+    }
+
+    .options{
+      margin-bottom: 14px;
+      display:flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .option-item input[type="radio"]{ display:none; }
+
+    .option-label{
+      display:block;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      cursor: pointer;
+      transition: transform 120ms ease, border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
+      user-select: none;
+    }
+
+    .option-label:hover{
+      border-color: rgba(90,162,255,0.35);
+      background: rgba(90,162,255,0.10);
+    }
+
+    .option-label.selected{
+      border-color: rgba(90,162,255,0.65);
+      background: rgba(90,162,255,0.16);
+      box-shadow: var(--ring);
+    }
+
+    .badge{
+      display:inline-block;
+      font-size: 0.82rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      margin-right: 8px;
+      vertical-align: middle;
+      font-weight: 800;
+    }
+    .badge-ok{
+      color: #052012;
+      background: rgba(52,211,153,0.9);
+      border-color: rgba(52,211,153,0.6);
+    }
+    .badge-wrong{
+      color: #24040b;
+      background: rgba(251,113,133,0.92);
+      border-color: rgba(251,113,133,0.6);
+    }
+
+    #keywordList{
+      max-height: 220px;
+      overflow-y: auto;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 14px;
+      padding: 10px;
+      background: rgba(0,0,0,0.20);
+    }
+    #keywordList label{
+      font-weight: 500;
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      margin: 0;
+      padding: 10px 10px;
+      border-radius: 12px;
+      color: rgba(255,255,255,0.86);
+      border: 1px solid transparent;
+    }
+    #keywordList label:hover{
+      background: rgba(255,255,255,0.06);
+      border-color: rgba(255,255,255,0.10);
+    }
+    #keywordList input[type="checkbox"]{
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+    }
+
+    .toolbar{
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      margin-bottom: 10px;
+    }
+    .toolbar .grow{ flex: 1 1 auto; }
+    .toolbar .selectall{
+      display:flex;
+      align-items:center;
+      gap: 8px;
+      color: var(--muted);
+      white-space: nowrap;
+      padding: 10px 10px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    .toolbar .selectall input{
+      width:18px; height:18px; accent-color: var(--accent);
+    }
+
+    .result{
+      font-size: 1rem;
+      line-height: 1.6;
+      color: rgba(255,255,255,0.90);
+    }
+
+    .muted{
+      color: var(--muted);
+    }
+
+    /* iOS Safari: 텍스트 클릭 확대 방지(추가 안전장치) */
+    input, button, select, textarea { font-size: 16px; }
   </style>
 </head>
 <body>
-  <h1>기출문제 풀이</h1>
-
-  <!-- 1. TXT 선택 -->
-  <div class="card" id="setupCard">
-    <label>1️⃣ 문제집(TXT 파일) 선택</label>
-    <select id="fileSelect" disabled>
-      <option>TXT 목록을 불러오는 중...</option>
-    </select>
-
-    <button id="loadFileBtn" disabled>선택한 TXT 파일 불러오기</button>
-    <div class="status" id="fileStatus">
-      이 레포의 <code>/problems</code> 폴더에 .txt 파일을 올리면 여기 자동으로 목록이 뜹니다.
-    </div>
-
-    <div id="questionCountArea" style="display:none; margin-top:10px;">
-      <label>2️⃣ 몇 문제 풀까요? (숫자로 입력)</label>
-      <input type="number" id="questionCountInput" min="1" step="1" />
-
-      <div class="btn-row" style="margin-top:4px;">
-        <button id="startQuizBtn">랜덤으로 풀기 시작</button>
-        <button id="keywordQuizBtn" class="secondary" disabled>키워드별로 풀어보기</button>
+  <div class="container">
+    <!-- Sticky Top Bar -->
+    <div class="topbar" id="topbar">
+      <div class="title-row">
+        <h1>기출문제 풀이</h1>
+        <div class="pill" id="modePill">대기중</div>
       </div>
-
-      <div class="status" id="questionCountStatus"></div>
-      <div class="status" id="keywordStatus"></div>
-
-      <div id="keywordSelectArea" style="display:none; margin-top:10px;">
-        <label>3️⃣ 자동 추출된 키워드 후보 (원하는 것만 선택)</label>
-
-        <!-- 🔎 검색 + 전체선택 영역 -->
-        <div style="display:flex; gap:8px; align-items:center; margin-bottom:6px;">
-          <input
-            type="text"
-            id="keywordSearchInput"
-            placeholder="키워드 검색..."
-            style="flex:1; padding:6px 8px; font-size:0.9rem;"
-          />
-          <label style="font-weight:400; display:flex; align-items:center; gap:4px; white-space:nowrap;">
-            <input type="checkbox" id="keywordSelectAll" />
-            전체선택
-          </label>
+      <div class="progress-wrap">
+        <div class="progress-meta">
+          <div id="progressStatusTop">문제집을 선택해주세요.</div>
+          <div id="progressRatioTop" class="muted"></div>
         </div>
-
-        <div id="keywordList"></div>
-        <div class="status" id="keywordHint">
-          키워드를 선택한 뒤 [키워드별로 풀어보기]를 눌러 주세요.
+        <div class="progress-bar" aria-label="진행률">
+          <div class="progress-fill" id="progressFill"></div>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- 2. 문제 풀이 -->
-  <div class="card" id="questionCard" style="display:none;">
-    <div class="status" id="progressStatus"></div>
-    <div class="question-text" id="questionText"></div>
-    <div id="answerArea"></div>
-    <button id="submitAnswerBtn">정답 제출</button>
-    <button id="nextQuestionBtn" class="secondary" disabled>다음 문제 ▶</button>
-    <div class="status" id="answerStatus"></div>
-  </div>
+    <!-- 1. TXT 선택 -->
+    <div class="card" id="setupCard">
+      <label>1️⃣ 문제집(TXT 파일) 선택</label>
+      <select id="fileSelect" disabled>
+        <option>TXT 목록을 불러오는 중...</option>
+      </select>
 
-  <!-- 3. 결과 -->
-  <div class="card" id="resultCard" style="display:none;">
-    <h2>결과</h2>
-    <div class="result" id="resultSummary"></div>
-    <button id="downloadWrongBtn">오답노트 다운로드 (.txt)</button>
-    <button id="restartBtn" class="secondary" style="margin-top:8px;">처음으로</button>
+      <button id="loadFileBtn" disabled>선택한 TXT 파일 불러오기</button>
+      <div class="status" id="fileStatus">
+        이 레포의 <code>/problems</code> 폴더에 .txt 파일을 올리면 여기 자동으로 목록이 뜹니다.
+      </div>
+
+      <div id="questionCountArea" style="display:none; margin-top:12px;">
+        <label>2️⃣ 몇 문제 풀까요? (숫자로 입력)</label>
+        <input type="number" id="questionCountInput" min="1" step="1" />
+
+        <div class="btn-row" style="margin-top:10px;">
+          <button id="startQuizBtn">랜덤으로 풀기 시작</button>
+          <button id="keywordQuizBtn" class="secondary" disabled>키워드별로 풀어보기</button>
+        </div>
+
+        <div class="status" id="questionCountStatus"></div>
+        <div class="status" id="keywordStatus"></div>
+
+        <div id="keywordSelectArea" style="display:none; margin-top:12px;">
+          <label>3️⃣ 자동 추출된 키워드 후보 (원하는 것만 선택)</label>
+
+          <!-- 🔎 검색 + 전체선택 -->
+          <div class="toolbar">
+            <input
+              type="text"
+              id="keywordSearchInput"
+              class="grow"
+              placeholder="키워드 검색..."
+            />
+            <div class="selectall">
+              <input type="checkbox" id="keywordSelectAll" />
+              <span>전체선택</span>
+            </div>
+          </div>
+
+          <div id="keywordList"></div>
+
+          <div class="status" id="keywordHint">
+            키워드를 선택한 뒤 [키워드별로 풀어보기]를 눌러 주세요.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. 문제 풀이 -->
+    <div class="card" id="questionCard" style="display:none;">
+      <div class="status" id="progressStatus"></div>
+      <div class="question-text" id="questionText"></div>
+      <div id="answerArea"></div>
+      <div class="btn-row">
+        <button id="submitAnswerBtn">정답 제출</button>
+        <button id="nextQuestionBtn" class="secondary" disabled>다음 문제 ▶</button>
+      </div>
+      <div class="status" id="answerStatus" style="margin-top:10px;"></div>
+    </div>
+
+    <!-- 3. 결과 -->
+    <div class="card" id="resultCard" style="display:none;">
+      <h2>결과</h2>
+      <div class="result" id="resultSummary"></div>
+      <div class="btn-row" style="margin-top:12px;">
+        <button id="downloadWrongBtn">오답노트 다운로드 (.txt)</button>
+        <button id="restartBtn" class="secondary">처음으로</button>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -219,6 +446,9 @@
 
   let questionCard, questionTextEl, answerArea, submitAnswerBtn, nextQuestionBtn, answerStatus, progressStatus;
   let resultCard, resultSummary, downloadWrongBtn, restartBtn;
+
+  // Topbar
+  let modePill, progressStatusTop, progressRatioTop, progressFill;
 
   /* ================================
      상태 변수
@@ -247,7 +477,25 @@
   }
 
   /* ================================
+     Topbar 상태 갱신
+  ================================ */
+  function setModePill(text){
+    if (!modePill) return;
+    modePill.textContent = text;
+  }
+  function setTopProgressText(leftText, ratioText){
+    if (progressStatusTop) progressStatusTop.textContent = leftText || '';
+    if (progressRatioTop) progressRatioTop.textContent = ratioText || '';
+  }
+  function setTopProgressPercent(pct){
+    if (!progressFill) return;
+    const v = Math.max(0, Math.min(100, pct || 0));
+    progressFill.style.width = v + '%';
+  }
+
+  /* ================================
      문제 텍스트 포맷팅 (자료 박스/표 변환)
+     ✅ 개선: [[표]]와 [자료] 충돌 방지 (단일 []만 매칭)
   ================================ */
   function formatQuestionText(q) {
     if (!q) return '';
@@ -263,23 +511,23 @@
         return (
           '<tr>' +
           cells
-            .map(c => `<${tag} style="border:1px solid #999;padding:4px 8px;text-align:center;">${c}</${tag}>`)
+            .map(c => `<${tag} style="border:1px solid rgba(255,255,255,0.18);padding:6px 10px;text-align:center;background:${idx===0?'rgba(90,162,255,0.12)':'rgba(255,255,255,0.04)'};color:rgba(255,255,255,0.9);">${c}</${tag}>`)
             .join('') +
           '</tr>'
         );
       }).join('');
-      return `<br><table style="border-collapse:collapse;margin:6px 0;font-size:0.9rem;"><tbody>${trHtml}</tbody></table><br>`;
+      return `<br><table style="width:100%;border-collapse:separate;border-spacing:0;border:1px solid rgba(255,255,255,0.14);border-radius:14px;overflow:hidden;margin:10px 0;font-size:0.95rem;box-shadow:0 10px 24px rgba(0,0,0,0.25);"><tbody>${trHtml}</tbody></table><br>`;
     });
 
-    // [...] → 자료 박스
-    html = html.replace(/\[([\s\S]*?)\]/g, function(_, inner) {
+    // [...] → 자료 박스 (단, [[...]] 제외)
+    html = html.replace(/\[(?!\[)([\s\S]*?)\](?!\])/g, function(match, inner) {
       const parts = inner.split(/\s*\/\s*/).map(p => p.trim()).filter(p => p);
-      if (!parts.length) return _;
-      const items = parts.map(p => `<div style="margin:2px 0;">· ${p}</div>`).join('');
+      if (!parts.length) return match;
+      const items = parts.map(p => `<div style="margin:2px 0;color:rgba(255,255,255,0.88);">· ${p}</div>`).join('');
       return `
         <br>
-        <div style="display:inline-block;padding:8px 12px;border:1px solid #555;border-radius:4px;background:#fafafa;margin:4px 0;">
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));column-gap:32px;">
+        <div style="display:block;padding:12px 14px;border:1px solid rgba(255,255,255,0.14);border-radius:14px;background:rgba(0,0,0,0.20);margin:8px 0;box-shadow:0 10px 24px rgba(0,0,0,0.22);">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));column-gap:18px;row-gap:4px;">
             ${items}
           </div>
         </div>
@@ -435,7 +683,7 @@
       '포함되지','포함된다','일시적으로','먼저','보다','아직','이미','모두','일반적인','일반적으로',
       '적절하지','필요한','필수','가능한','즉시','함께','없다','없으므로','어떤','어떻게','포함','왜',
 
-      // 추가 요청 스톱워드
+      // 추가 요청 스톱워드(네가 넣어둔 것 유지)
       '회기출','원이다','원을','원에','하였다','한다','하지','않습니다','아닙니다','것이','크게','잘못',
       '못한','그럼','이전','현재','미래','일부','나머지는','말한다','특정','상태를','상태','목적으로',
       '목적적합성과','목적적','기초','기말','기초자본','기말자본','내에','년의','년을','년에','년간',
@@ -508,7 +756,7 @@
       const chk = document.createElement('input');
       chk.type = 'checkbox';
       chk.value = key;
-      chk.checked = false;              // ✅ 처음엔 전부 해제
+      chk.checked = false;              // 처음엔 전부 해제
       chk.name = 'keywordCandidate';
 
       const txt = document.createElement('span');
@@ -522,6 +770,34 @@
     keywordSelectArea.style.display = 'block';
     keywordQuizBtn.disabled = false;
     keywordStatus.textContent = `키워드 ${keysSorted.length}개가 자동 감지됨`;
+  }
+
+  /* ================================
+     진행률 업데이트(상단 바 + 카드 내부)
+  ================================ */
+  function updateProgressUI() {
+    if (!problems || !problems.length) {
+      setTopProgressText('문제집을 선택해주세요.', '');
+      setTopProgressPercent(0);
+      return;
+    }
+    const total = problems.length;
+    const cur = Math.min(currentIndex + 1, total);
+    const pct = total > 0 ? Math.round((currentIndex / total) * 100) : 0;
+
+    const modeLabel = currentKeyword ? '키워드 모드' : '랜덤 모드';
+    setModePill(modeLabel);
+
+    const kwShort = currentKeyword
+      ? (currentKeyword.length > 26 ? currentKeyword.slice(0, 26) + '…' : currentKeyword)
+      : '';
+
+    const left = currentKeyword
+      ? `진행중 · ${modeLabel} · ${kwShort}`
+      : `진행중 · ${modeLabel}`;
+
+    setTopProgressText(left, `${cur} / ${total}`);
+    setTopProgressPercent(pct);
   }
 
   /* ================================
@@ -540,6 +816,7 @@
 
     const prefix = currentKeyword ? `[키워드: ${currentKeyword}] ` : '';
     progressStatus.textContent = `${prefix}문제 ${currentIndex + 1} / ${problems.length}`;
+    updateProgressUI();
 
     if (p.answerType === 'objective') {
       const container = document.createElement('div');
@@ -600,7 +877,7 @@
 
     let html = '';
     if (currentKeyword) {
-      html += `<p>이번 세트는 <strong>"${currentKeyword}"</strong> 키워드로 출제되었습니다.</p>`;
+      html += `<p class="muted">이번 세트는 <strong style="color:rgba(255,255,255,0.92);">"${currentKeyword}"</strong> 기준으로 출제되었습니다.</p>`;
     }
     html += `
       <p>총 <strong>${total}</strong>문제 중 <strong>${correctCount}</strong>개 정답,
@@ -609,18 +886,22 @@
     `;
 
     if (wrongList.length > 0) {
-      html += `<p>오답노트는 아래 버튼으로 다운로드할 수 있습니다.</p>`;
+      html += `<p class="muted">오답노트는 아래 버튼으로 다운로드할 수 있습니다.</p>`;
     } else {
-      html += `<p>오답이 없습니다. 잘하셨어요!</p>`;
+      html += `<p class="muted">오답이 없습니다. 아주 좋아요!</p>`;
     }
 
     resultSummary.innerHTML = html;
+
+    setModePill('완료');
+    setTopProgressText('결과 화면', `${total}문제`);
+    setTopProgressPercent(100);
+
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   /* ================================
      TXT 목록 불러오기 (GitHub API)
-     👉 예전(잘 되던) 심플 버전 그대로
   ================================ */
   function loadProblemFilesList() {
     fileSelect.disabled = true;
@@ -663,11 +944,18 @@
 
         fileStatus.textContent =
           `총 ${txtFiles.length}개의 TXT 파일을 찾았습니다. 선택 후 불러오기 버튼을 눌러주세요.`;
+
+        setModePill('대기중');
+        setTopProgressText('문제집을 선택해주세요.', '');
+        setTopProgressPercent(0);
       })
       .catch(err => {
         console.error(err);
         fileSelect.innerHTML = '<option>목록을 불러올 수 없습니다.</option>';
         fileStatus.textContent = 'GitHub API 오류: ' + err.message;
+        setModePill('오류');
+        setTopProgressText('TXT 목록을 불러오지 못했습니다.', '');
+        setTopProgressPercent(0);
       });
   }
 
@@ -706,6 +994,15 @@
     downloadWrongBtn = document.getElementById("downloadWrongBtn");
     restartBtn = document.getElementById("restartBtn");
 
+    // topbar
+    modePill = document.getElementById("modePill");
+    progressStatusTop = document.getElementById("progressStatusTop");
+    progressRatioTop = document.getElementById("progressRatioTop");
+    progressFill = document.getElementById("progressFill");
+
+    setModePill('대기중');
+    updateProgressUI();
+
     /* =====================================
        TXT 파일 불러오기 버튼
     ===================================== */
@@ -723,6 +1020,9 @@
       keywordMap = null;
 
       fileStatus.textContent = `파일 읽는 중: ${currentFileMeta.path} ...`;
+      setModePill('불러오는 중');
+      setTopProgressText('문제 파일을 불러오는 중…', '');
+      setTopProgressPercent(0);
 
       const rawUrl =
         `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${encodeURI(currentFileMeta.path)}`;
@@ -743,6 +1043,9 @@
         if (!allProblems.length) {
           fileStatus.textContent = "이 TXT에서 문제를 인식하지 못했습니다. 형식을 확인해주세요.";
           questionCountArea.style.display = "none";
+          setModePill('오류');
+          setTopProgressText('문제 인식 실패', '');
+          setTopProgressPercent(0);
           return;
         }
 
@@ -758,8 +1061,15 @@
         keywordMap = buildKeywordCandidates(allProblems);
         renderKeywordList(keywordMap);
 
+        setModePill('대기중');
+        setTopProgressText('문제 수를 설정하고 시작하세요.', '');
+        setTopProgressPercent(0);
+
       } catch (err) {
         fileStatus.textContent = "파일 로딩 에러: " + err.message;
+        setModePill('오류');
+        setTopProgressText('파일 로딩 에러', '');
+        setTopProgressPercent(0);
       }
     });
 
@@ -799,90 +1109,92 @@
     });
 
     /* =====================================
-       키워드별 풀기
+       키워드별 풀기 (선택 키워드 합집합)
     ===================================== */
     keywordQuizBtn.addEventListener("click", () => {
-  if (!keywordMap) {
-    alert("키워드가 없습니다.");
-    return;
-  }
-  const allKeys = Object.keys(keywordMap);
-  if (!allKeys.length) {
-    alert("사용 가능한 키워드가 없습니다.");
-    return;
-  }
+      if (!keywordMap) {
+        alert("키워드가 없습니다.");
+        return;
+      }
+      const allKeys = Object.keys(keywordMap);
+      if (!allKeys.length) {
+        alert("사용 가능한 키워드가 없습니다.");
+        return;
+      }
 
-  // 체크된 키워드 수집
-  const selectedInputs = Array.from(
-    document.querySelectorAll('input[name="keywordCandidate"]:checked')
-  );
-  const selectedKeys = selectedInputs.map(el => el.value);
+      const selectedInputs = Array.from(
+        document.querySelectorAll('input[name="keywordCandidate"]:checked')
+      );
+      const selectedKeys = selectedInputs.map(el => el.value);
 
-  if (!selectedKeys.length) {
-    alert("키워드를 선택해주세요.");
-    return;
-  }
+      if (!selectedKeys.length) {
+        alert("키워드를 선택해주세요.");
+        return;
+      }
 
-  // ✅ 선택한 키워드들의 문제 인덱스 '합집합' 만들기 (중복 제거)
-  const idxSet = new Set();
-  selectedKeys.forEach(key => {
-    const arr = keywordMap[key] || [];
-    arr.forEach(i => idxSet.add(i));
-  });
+      // 합집합(중복 제거)
+      const idxSet = new Set();
+      selectedKeys.forEach(key => {
+        (keywordMap[key] || []).forEach(i => idxSet.add(i));
+      });
 
-  const indices = Array.from(idxSet);
-  if (!indices.length) {
-    alert("선택한 키워드들에 해당하는 문제가 없습니다.");
-    return;
-  }
+      const indices = Array.from(idxSet);
+      if (!indices.length) {
+        alert("선택한 키워드들에 해당하는 문제가 없습니다.");
+        return;
+      }
 
-  // 섞기 (셔플)
-  for (let i = indices.length - 1; i > 0; i--) {
-    const k = Math.floor(Math.random() * (i + 1));
-    [indices[i], indices[k]] = [indices[k], indices[i]];
-  }
+      // 셔플
+      for (let i = indices.length - 1; i > 0; i--) {
+        const k = Math.floor(Math.random() * (i + 1));
+        [indices[i], indices[k]] = [indices[k], indices[i]];
+      }
 
-  const maxN = indices.length;
+      const maxN = indices.length;
 
-  // ✅ 전체 합계 기준으로 범위 표시
-  const labelForPrompt =
-    selectedKeys.length === 1
-      ? `"${selectedKeys[0]}"`
-      : `"${selectedKeys[0]}" 외 ${selectedKeys.length - 1}개`;
+      const labelForPrompt =
+        selectedKeys.length === 1
+          ? `"${selectedKeys[0]}"`
+          : `"${selectedKeys[0]}" 외 ${selectedKeys.length - 1}개`;
 
-  let inputStr = prompt(
-    `선택한 키워드 ${labelForPrompt} 관련 문제는 총 ${maxN}개입니다.\n몇 문제 풀까요? (1~${maxN})`,
-    Math.min(10, maxN)
-  );
+      let inputStr = prompt(
+        `선택한 키워드 ${labelForPrompt} 관련 문제는 총 ${maxN}개입니다.\n몇 문제 풀까요? (1~${maxN})`,
+        String(Math.min(10, maxN))
+      );
 
-  if (inputStr === null) {
-    alert("키워드별 풀기가 취소되었습니다.");
-    currentKeyword = null;
-    return;
-  }
+      if (inputStr === null) {
+        alert("키워드별 풀기가 취소되었습니다.");
+        currentKeyword = null;
+        updateProgressUI();
+        return;
+      }
 
-  let n = parseInt(inputStr, 10);
-  if (!isFinite(n) || n <= 0) n = maxN;
-  if (n > maxN) n = maxN;
+      let n = parseInt(inputStr, 10);
+      if (!isFinite(n) || n <= 0) n = maxN;
+      if (n > maxN) n = maxN;
 
-  // n개만 사용
-  problems = indices.slice(0, n).map(i => allProblems[i]);
+      problems = indices.slice(0, n).map(i => allProblems[i]);
 
-  currentIndex = 0;
-  correctCount = 0;
-  solvedCount = 0;
-  wrongList = [];
+      currentIndex = 0;
+      correctCount = 0;
+      solvedCount = 0;
+      wrongList = [];
 
-  // 결과 화면에서 어떤 키워드 세트인지 표시용
-  currentKeyword =
-    selectedKeys.length === 1 ? selectedKeys[0] : selectedKeys.join(", ");
+      // ✅ 표시용 키워드 라벨(너무 길어지지 않게)
+      const keywordLabel =
+        selectedKeys.length <= 3
+          ? selectedKeys.join(", ")
+          : `${selectedKeys[0]}, ${selectedKeys[1]}, ${selectedKeys[2]} 외 ${selectedKeys.length - 3}개`;
 
-  setupCard.style.display = "none";
-  questionCard.style.display = "block";
-  resultCard.style.display = "none";
+      currentKeyword = keywordLabel;
 
-  showCurrentQuestion();
-});
+      setupCard.style.display = "none";
+      questionCard.style.display = "block";
+      resultCard.style.display = "none";
+
+      showCurrentQuestion();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
 
     /* =====================================
        정답 제출
@@ -946,6 +1258,10 @@
       nextQuestionBtn.disabled = false;
       nextQuestionBtn.textContent =
         currentIndex === problems.length - 1 ? "결과 보기" : "다음 문제 ▶";
+
+      // 제출 후 진행률은 그대로(다음 문제로 넘어갈 때 증가)
+      updateProgressUI();
+      window.scrollTo({ top: 0, behavior: "smooth" });
     });
 
     /* =====================================
@@ -961,63 +1277,63 @@
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
 
-/* =====================================
-   오답노트 다운로드
-===================================== */
-downloadWrongBtn.addEventListener("click", () => {
-  if (!wrongList.length) return alert("오답이 없습니다.");
+    /* =====================================
+       오답노트 다운로드 (한글 깨짐 방지: UTF-8 BOM)
+    ===================================== */
+    downloadWrongBtn.addEventListener("click", () => {
+      if (!wrongList.length) return alert("오답이 없습니다.");
 
-  const lines = [];
-  lines.push(`▶ 오답노트: ${new Date().toLocaleString()}`);
-  if (currentKeyword) lines.push(`▶ 키워드 모드: ${currentKeyword}`);
-  lines.push("");
+      const lines = [];
+      lines.push(`▶ 오답노트: ${new Date().toLocaleString()}`);
+      if (currentKeyword) lines.push(`▶ 키워드 모드: ${currentKeyword}`);
+      lines.push("");
 
-  wrongList.forEach(item => {
-    lines.push("----------------------------------------");
-    if (item.fileName) lines.push("[파일] " + item.fileName);
-    lines.push("[문제번호] " + item.index);
-    lines.push("[문제]");
-    lines.push(item.question);
+      wrongList.forEach(item => {
+        lines.push("----------------------------------------");
+        if (item.fileName) lines.push("[파일] " + item.fileName);
+        lines.push("[문제번호] " + item.index);
+        lines.push("[문제]");
+        lines.push(item.question);
 
-    if (item.options && item.options.length) {
-      lines.push("[보기]");
-      item.options.forEach((opt, idx) => {
-        lines.push(`  ${idx + 1}. ${opt}`);
+        if (item.options && item.options.length) {
+          lines.push("[보기]");
+          item.options.forEach((opt, idx) => {
+            lines.push(`  ${idx + 1}. ${opt}`);
+          });
+        }
+
+        lines.push("[나의 답] " + item.userAnswer);
+        lines.push(
+          "[정답] " +
+            (item.answerType === "objective"
+              ? item.correctAnswer + "번"
+              : String(item.correctAnswer))
+        );
+
+        if (item.explanation) {
+          lines.push("[해설]");
+          lines.push(item.explanation);
+        }
+        lines.push("");
       });
-    }
 
-    lines.push("[나의 답] " + item.userAnswer);
-    lines.push(
-      "[정답] " +
-        (item.answerType === "objective"
-          ? item.correctAnswer + "번"
-          : String(item.correctAnswer))
-    );
+      const BOM = "\uFEFF"; // UTF-8 BOM (한글 깨짐 방지)
+      const blob = new Blob([BOM + lines.join("\n")], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
 
-    if (item.explanation) {
-      lines.push("[해설]");
-      lines.push(item.explanation);
-    }
-    lines.push("");
-  });
+      const a = document.createElement("a");
+      const base =
+        (currentFileMeta && currentFileMeta.name
+          ? currentFileMeta.name.replace(/\.txt$/i, "")
+          : "오답노트");
+      a.href = url;
+      a.download = base + "_오답노트.txt";
 
-  const BOM = "\uFEFF"; // UTF-8 BOM (한글 깨짐 방지)
-  const blob = new Blob([BOM + lines.join("\n")], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-
-  const a = document.createElement("a");
-  const base =
-    (currentFileMeta && currentFileMeta.name
-      ? currentFileMeta.name.replace(/\.txt$/i, "")
-      : "오답노트");
-  a.href = url;
-  a.download = base + "_오답노트.txt";
-
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-});
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
 
     /* =====================================
        다시 시작 (처음 화면)
@@ -1028,6 +1344,14 @@ downloadWrongBtn.addEventListener("click", () => {
       resultCard.style.display = "none";
 
       currentKeyword = null;
+      problems = [];
+      allProblems = allProblems || [];
+      currentIndex = 0;
+
+      setModePill('대기중');
+      setTopProgressText('문제집을 선택해주세요.', '');
+      setTopProgressPercent(0);
+
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
 
