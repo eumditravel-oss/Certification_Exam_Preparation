@@ -479,6 +479,15 @@
   /* ================================
      Topbar 상태 갱신
   ================================ */
+    // ✅ 파일명 앞의 "1." "1)" "①" 같은 접두어 제거용
+function stripLeadingNumberPrefix(name) {
+  if (!name) return '';
+  return name
+    .replace(/\.txt$/i, '')
+    .replace(/^\s*(\d+\s*[\.\)]\s*|[①-⑨]\s*)+/, '')
+    .trim();
+}
+
   function setModePill(text){
     if (!modePill) return;
     modePill.textContent = text;
@@ -940,12 +949,16 @@ questionTextEl.innerHTML = formatQuestionText(cleanQuestion);
         fileSelect.innerHTML = '';
         const metaList = txtFiles.map(f => ({ name: f.name, path: f.path }));
 
-        metaList.forEach((item, idx) => {
-          const opt = document.createElement('option');
-          opt.value = String(idx);
-          opt.textContent = `${idx + 1}. ${item.name.replace(/\.txt$/, '')}`;
-          fileSelect.appendChild(opt);
-        });
+metaList.forEach((item, idx) => {
+  const opt = document.createElement('option');
+  opt.value = String(idx);
+
+  const cleaned = stripLeadingNumberPrefix(item.name); // ✅ 여기!
+  opt.textContent = `${idx + 1}. ${cleaned}`;
+
+  fileSelect.appendChild(opt);
+});
+
 
         fileSelect.dataset.files = JSON.stringify(metaList);
         fileSelect.disabled = false;
