@@ -6,23 +6,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root{
-      --bg: #0b1220;
+      /* ✅ 인스타 감성(Soft neon + glass) 팔레트 */
+      --bg1:#0b1020;
+      --bg2:#0a1426;
       --panel: rgba(255,255,255,0.08);
       --panel2: rgba(255,255,255,0.06);
-      --card: rgba(255,255,255,0.09);
+      --card: rgba(255,255,255,0.08);
       --border: rgba(255,255,255,0.14);
+
       --text: rgba(255,255,255,0.92);
-      --muted: rgba(255,255,255,0.68);
-      --muted2: rgba(255,255,255,0.52);
-      --accent: #5aa2ff;
-      --accent2:#7dd3fc;
+      --muted: rgba(255,255,255,0.70);
+      --muted2: rgba(255,255,255,0.55);
+
+      /* ✅ 인스타 느낌 그라데이션 포인트 */
+      --accent: #ff4fd8;   /* 핑크 */
+      --accent2:#7c5cff;   /* 퍼플 */
+      --accent3:#22d3ee;   /* 시안 */
       --ok:#34d399;
       --bad:#fb7185;
-      --shadow: 0 18px 55px rgba(0,0,0,0.45);
-      --shadow2: 0 8px 22px rgba(0,0,0,0.35);
-      --radius: 16px;
+
+      --shadow: 0 18px 55px rgba(0,0,0,0.48);
+      --shadow2: 0 10px 26px rgba(0,0,0,0.36);
+
+      --radius: 18px;
       --radius2: 12px;
-      --ring: 0 0 0 3px rgba(90,162,255,0.28);
+
+      --ring: 0 0 0 3px rgba(255,79,216,0.22);
       --maxw: 980px;
     }
 
@@ -31,11 +40,14 @@
     body{
       margin:0;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+      /* ✅ 인스타 감성 배경(핑크/퍼플/시안 글로우) */
       background:
-        radial-gradient(1200px 600px at 15% 10%, rgba(90,162,255,0.18), transparent 55%),
-        radial-gradient(900px 500px at 80% 15%, rgba(125,211,252,0.14), transparent 55%),
-        radial-gradient(900px 700px at 45% 80%, rgba(52,211,153,0.12), transparent 60%),
-        linear-gradient(180deg, #07101f 0%, #0b1220 100%);
+        radial-gradient(1200px 700px at 15% 10%, rgba(255,79,216,0.18), transparent 55%),
+        radial-gradient(900px 600px at 82% 18%, rgba(124,92,255,0.16), transparent 58%),
+        radial-gradient(900px 700px at 45% 82%, rgba(34,211,238,0.12), transparent 60%),
+        linear-gradient(180deg, var(--bg2) 0%, var(--bg1) 100%);
+
       color: var(--text);
       padding: 18px 14px 28px;
     }
@@ -51,8 +63,8 @@
       z-index: 20;
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
-      background: linear-gradient(180deg, rgba(11,18,32,0.92) 0%, rgba(11,18,32,0.58) 100%);
-      border: 1px solid rgba(255,255,255,0.08);
+      background: linear-gradient(180deg, rgba(10,20,38,0.92) 0%, rgba(10,20,38,0.60) 100%);
+      border: 1px solid rgba(255,255,255,0.10);
       border-radius: var(--radius);
       padding: 14px 14px 12px;
       box-shadow: var(--shadow2);
@@ -71,7 +83,7 @@
       margin:0;
       font-size: 1.12rem;
       letter-spacing: 0.2px;
-      font-weight: 800;
+      font-weight: 900;
     }
 
     .pill{
@@ -81,7 +93,7 @@
       padding: 6px 10px;
       border-radius: 999px;
       background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.14);
       color: var(--muted);
       font-size: 0.86rem;
       white-space: nowrap;
@@ -110,10 +122,11 @@
       overflow: hidden;
     }
 
+    /* ✅ 인스타 느낌 진행 그라데이션 */
     .progress-fill{
       height:100%;
       width:0%;
-      background: linear-gradient(90deg, var(--accent) 0%, var(--accent2) 45%, rgba(52,211,153,0.85) 100%);
+      background: linear-gradient(90deg, var(--accent) 0%, var(--accent2) 55%, var(--accent3) 100%);
       border-radius: 999px;
       transition: width 180ms ease;
     }
@@ -134,10 +147,10 @@
     }
 
     label{
-      font-weight: 700;
+      font-weight: 800;
       display:block;
       margin-bottom: 8px;
-      color: rgba(255,255,255,0.86);
+      color: rgba(255,255,255,0.88);
     }
 
     select, input[type="text"], input[type="number"]{
@@ -146,14 +159,14 @@
       border-radius: 12px;
       border: 1px solid rgba(255,255,255,0.14);
       width: 100%;
-      background: rgba(0,0,0,0.24);
+      background: rgba(0,0,0,0.22);
       color: var(--text);
       outline: none;
     }
 
     select:focus, input[type="text"]:focus, input[type="number"]:focus{
       box-shadow: var(--ring);
-      border-color: rgba(90,162,255,0.5);
+      border-color: rgba(255,79,216,0.55);
     }
 
     button{
@@ -163,11 +176,13 @@
       border-radius: 12px;
       border: 1px solid rgba(255,255,255,0.14);
       cursor: pointer;
-      font-weight: 800;
-      background: linear-gradient(180deg, rgba(90,162,255,0.95) 0%, rgba(63,127,255,0.92) 100%);
-      color: #081225;
-      box-shadow: 0 10px 24px rgba(0,0,0,0.28);
-      transition: transform 120ms ease, filter 120ms ease, background 120ms ease;
+      font-weight: 900;
+
+      /* ✅ 인스타 버튼 그라데이션 */
+      background: linear-gradient(180deg, rgba(255,79,216,0.98) 0%, rgba(124,92,255,0.92) 55%, rgba(34,211,238,0.85) 100%);
+      color: #070b18;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.30);
+      transition: transform 120ms ease, filter 120ms ease;
       user-select: none;
       -webkit-tap-highlight-color: transparent;
     }
@@ -207,19 +222,20 @@
       color: rgba(255,255,255,0.86);
     }
 
+    /* ✅ 문제/예제/보기 사이 간격 줄이기 */
     .question-text{
-      line-height: 1.7;
+      line-height: 1.65;
       font-size: 1.05rem;
       color: rgba(255,255,255,0.92);
       letter-spacing: 0.1px;
-      margin-bottom: 14px;
+      margin-bottom: 10px;   /* 기존 14px -> 10px */
     }
 
     .options{
-      margin-bottom: 14px;
+      margin-bottom: 10px;  /* 기존 14px -> 10px */
       display:flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;             /* 기존 10px -> 8px */
     }
 
     .option-item input[type="radio"]{ display:none; }
@@ -236,13 +252,13 @@
     }
 
     .option-label:hover{
-      border-color: rgba(90,162,255,0.35);
-      background: rgba(90,162,255,0.10);
+      border-color: rgba(255,79,216,0.35);
+      background: rgba(255,79,216,0.10);
     }
 
     .option-label.selected{
-      border-color: rgba(90,162,255,0.65);
-      background: rgba(90,162,255,0.16);
+      border-color: rgba(255,79,216,0.62);
+      background: rgba(255,79,216,0.14);
       box-shadow: var(--ring);
     }
 
@@ -255,7 +271,7 @@
       background: rgba(255,255,255,0.06);
       margin-right: 8px;
       vertical-align: middle;
-      font-weight: 800;
+      font-weight: 900;
     }
     .badge-ok{
       color: #052012;
@@ -277,7 +293,7 @@
       background: rgba(0,0,0,0.20);
     }
     #keywordList label{
-      font-weight: 500;
+      font-weight: 600;
       display:flex;
       align-items:center;
       gap: 10px;
@@ -327,6 +343,50 @@
 
     .muted{
       color: var(--muted);
+    }
+
+    /* ✅ 자료박스/표 박스: 여백/빈공간 줄이기 */
+    .qbox{
+      padding: 10px 12px;
+      margin: 6px 0;                 /* 핵심: 박스 위아래 여백 축소 */
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.18);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.18);
+    }
+    .qbox .grid{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px,1fr));
+      column-gap: 16px;
+      row-gap: 2px;                  /* 기존 4px -> 2px */
+    }
+    .qitem{
+      margin: 2px 0;
+      color: rgba(255,255,255,0.88);
+    }
+
+    .qtable{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius:14px;
+      overflow:hidden;
+      margin: 6px 0;                 /* 기존 10px -> 6px */
+      font-size:0.95rem;
+      box-shadow:0 10px 24px rgba(0,0,0,0.25);
+    }
+    .qtable th, .qtable td{
+      border:1px solid rgba(255,255,255,0.18);
+      padding:6px 10px;
+      text-align:center;
+      color:rgba(255,255,255,0.90);
+    }
+    .qtable th{
+      background: rgba(255,79,216,0.14); /* 헤더도 인스타 톤 */
+    }
+    .qtable td{
+      background: rgba(255,255,255,0.04);
     }
 
     /* iOS Safari: 텍스트 클릭 확대 방지(추가 안전장치) */
@@ -479,14 +539,14 @@
   /* ================================
      Topbar 상태 갱신
   ================================ */
-    // ✅ 파일명 앞의 "1." "1)" "①" 같은 접두어 제거용
-function stripLeadingNumberPrefix(name) {
-  if (!name) return '';
-  return name
-    .replace(/\.txt$/i, '')
-    .replace(/^\s*(\d+\s*[\.\)]\s*|[①-⑨]\s*)+/, '')
-    .trim();
-}
+  // ✅ 파일명 앞의 "1." "1)" "①" 같은 접두어 제거용
+  function stripLeadingNumberPrefix(name) {
+    if (!name) return '';
+    return name
+      .replace(/\.txt$/i, '')
+      .replace(/^\s*(\d+\s*[\.\)]\s*|[①-⑨]\s*)+/, '')
+      .trim();
+  }
 
   function setModePill(text){
     if (!modePill) return;
@@ -501,17 +561,16 @@ function stripLeadingNumberPrefix(name) {
     const v = Math.max(0, Math.min(100, pct || 0));
     progressFill.style.width = v + '%';
   }
-    function normalizeTitlePrefix(text) {
-  if (!text) return '';
-  return text
-    .replace(/^\s*(\d+\s*[\.\)]\s*|[①-⑨]\s*)/, '') // 1. / 1) / ① 제거
-    .trim();
-}
-
+  function normalizeTitlePrefix(text) {
+    if (!text) return '';
+    return text
+      .replace(/^\s*(\d+\s*[\.\)]\s*|[①-⑨]\s*)/, '')
+      .trim();
+  }
 
   /* ================================
      문제 텍스트 포맷팅 (자료 박스/표 변환)
-     ✅ 개선: [[표]]와 [자료] 충돌 방지 (단일 []만 매칭)
+     ✅ 개선: 공백 과다(br) 제거 + 박스 높이 텍스트에 맞춤
   ================================ */
   function formatQuestionText(q) {
     if (!q) return '';
@@ -526,28 +585,22 @@ function stripLeadingNumberPrefix(name) {
         const tag = idx === 0 ? 'th' : 'td';
         return (
           '<tr>' +
-          cells
-            .map(c => `<${tag} style="border:1px solid rgba(255,255,255,0.18);padding:6px 10px;text-align:center;background:${idx===0?'rgba(90,162,255,0.12)':'rgba(255,255,255,0.04)'};color:rgba(255,255,255,0.9);">${c}</${tag}>`)
-            .join('') +
+          cells.map(c => `<${tag}>${c}</${tag}>`).join('') +
           '</tr>'
         );
       }).join('');
-      return `<br><table style="width:100%;border-collapse:separate;border-spacing:0;border:1px solid rgba(255,255,255,0.14);border-radius:14px;overflow:hidden;margin:10px 0;font-size:0.95rem;box-shadow:0 10px 24px rgba(0,0,0,0.25);"><tbody>${trHtml}</tbody></table><br>`;
+      /* ✅ 앞뒤 <br> 제거 + 클래스 적용 */
+      return `<table class="qtable"><tbody>${trHtml}</tbody></table>`;
     });
 
     // [...] → 자료 박스 (단, [[...]] 제외)
     html = html.replace(/\[(?!\[)([\s\S]*?)\](?!\])/g, function(match, inner) {
       const parts = inner.split(/\s*\/\s*/).map(p => p.trim()).filter(p => p);
       if (!parts.length) return match;
-      const items = parts.map(p => `<div style="margin:2px 0;color:rgba(255,255,255,0.88);">· ${p}</div>`).join('');
-      return `
-        <br>
-        <div style="display:block;padding:12px 14px;border:1px solid rgba(255,255,255,0.14);border-radius:14px;background:rgba(0,0,0,0.20);margin:8px 0;box-shadow:0 10px 24px rgba(0,0,0,0.22);">
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));column-gap:18px;row-gap:4px;">
-            ${items}
-          </div>
-        </div>
-        <br>`;
+
+      const items = parts.map(p => `<div class="qitem">· ${p}</div>`).join('');
+      /* ✅ 앞뒤 <br> 제거 + 클래스 적용 */
+      return `<div class="qbox"><div class="grid">${items}</div></div>`;
     });
 
     return html.replace(/\n/g, '<br>');
@@ -557,149 +610,135 @@ function stripLeadingNumberPrefix(name) {
      TXT → 문제 파싱
   ================================ */
   function parseProblems(text) {
-  const blocks = text
-    .split(/\n\s*\n/g)
-    .map(b => b.trim())
-    .filter(b => b.length > 0);
+    const blocks = text
+      .split(/\n\s*\n/g)
+      .map(b => b.trim())
+      .filter(b => b.length > 0);
 
-  const parsed = [];
+    const parsed = [];
 
-  blocks.forEach(block => {
-    const lines = block
-      .split('\n')
-      .map(l => l.trim())
-      .filter(l => l !== '');
+    blocks.forEach(block => {
+      const lines = block
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => l !== '');
 
-    if (!lines.length) return;
+      if (!lines.length) return;
 
-    let answerIdx = -1;
-    let answerRaw = '';
-    let explanation = '';
+      let answerIdx = -1;
+      let answerRaw = '';
+      let explanation = '';
 
-    // 정답 라인 찾기
-    lines.forEach((line, i) => {
-      const m = line.match(/^정답\s*[:：]\s*(.+)$/);
-      if (m) {
-        answerIdx = i;
-        const ansPart = m[1].trim();
+      // 정답 라인 찾기
+      lines.forEach((line, i) => {
+        const m = line.match(/^정답\s*[:：]\s*(.+)$/);
+        if (m) {
+          answerIdx = i;
+          const ansPart = m[1].trim();
 
-        const expMatch = ansPart.match(/해설\s*[:：]\s*(.+)$/);
-        if (expMatch) {
-          explanation = expMatch[1].trim();
-          answerRaw = ansPart.slice(0, expMatch.index).trim();
-        } else {
-          answerRaw = ansPart;
-        }
-      }
-    });
-
-    if (answerIdx === -1) return;
-
-    // 해설이 별도 라인들로 있는 경우
-    if (!explanation && answerIdx + 1 < lines.length) {
-      const rest = lines.slice(answerIdx + 1).join('\n').trim();
-      if (rest) {
-        const m2 = rest.match(/^해설\s*[:：]\s*(.+)$/);
-        explanation = m2 ? m2[1].trim() : rest;
-      }
-    }
-
-    const questionPart = lines.slice(0, answerIdx);
-    if (!questionPart.length) return;
-
-    // ✅ 문제 라인: "문제:" 라벨 제거 후 저장 (줄바꿈으로 이어진 문제도 합치기)
-    // - "보기:"가 나오기 전까지를 문제로 취급
-    let qLines = [];
-    let optLines = [];
-    let seenOptionZone = false;
-
-    questionPart.forEach(line => {
-      // 보기 라벨 감지(보기: 로 시작하거나, 보기 라벨이 포함된 경우)
-      if (/^보기\s*[:：]/.test(line)) {
-        seenOptionZone = true;
-        optLines.push(line);
-        return;
-      }
-      // 보기 영역이 이미 시작됐으면 option쪽으로
-      if (seenOptionZone) {
-        optLines.push(line);
-      } else {
-        qLines.push(line);
-      }
-    });
-
-    // 문제 문장 정리
-    let questionText = qLines.join(' ').replace(/^문제\s*[:：]\s*/,'').trim();
-    if (!questionText) return;
-
-    // ✅ 보기 파싱 강화:
-    // 1) optLines에 "보기: 1) ... 2) ..." 같은 한 줄이 있어도 파싱
-    // 2) 보기 라벨 없이도 1) 2) 3) 4) 가 있으면 파싱
-    let options = [];
-
-    const joinedOpt = optLines
-      .join(' ')
-      .replace(/^보기\s*[:：]\s*/,'')
-      .replace(/\s+/g,' ')
-      .trim();
-
-    // (A) "1) ... 2) ..." 형태 파싱
-    if (joinedOpt) {
-      const reg = /(\d+)\)\s*([^]*?)(?=(?:\s+\d+\)\s*)|$)/g;
-      let m;
-      while ((m = reg.exec(joinedOpt)) !== null) {
-        const txt = (m[2] || '').trim();
-        if (txt) options.push(txt);
-      }
-    }
-
-    // (B) 줄 단위 "1) ..." / "1. ..." / "① ..." 보조 파싱(혹시 위에서 못 잡으면)
-    if (options.length < 2 && optLines.length) {
-      optLines.forEach(l => {
-        const s = l.replace(/^보기\s*[:：]\s*/,'').trim();
-        let mm = s.match(/^(\d+)[\.\)\-\s]\s*(.+)$/);
-        if (mm) options.push(mm[2].trim());
-        else {
-          const first = s.charAt(0);
-          const num = circledToNumber(first);
-          if (num != null) options.push(s.slice(1).trim());
+          const expMatch = ansPart.match(/해설\s*[:：]\s*(.+)$/);
+          if (expMatch) {
+            explanation = expMatch[1].trim();
+            answerRaw = ansPart.slice(0, expMatch.index).trim();
+          } else {
+            answerRaw = ansPart;
+          }
         }
       });
-    }
 
-    // 정답 판별
-    let answerType = 'subjective';
-    let answer = answerRaw;
+      if (answerIdx === -1) return;
 
-    if (options.length >= 2) {
-      answerType = 'objective';
-      let nm = answerRaw.match(/(\d+)/);
-      if (nm) answer = Number(nm[1]);
-      else {
-        const c = circledToNumber(answerRaw.trim().charAt(0));
-        if (c != null) answer = c;
+      // 해설이 별도 라인들로 있는 경우
+      if (!explanation && answerIdx + 1 < lines.length) {
+        const rest = lines.slice(answerIdx + 1).join('\n').trim();
+        if (rest) {
+          const m2 = rest.match(/^해설\s*[:：]\s*(.+)$/);
+          explanation = m2 ? m2[1].trim() : rest;
+        }
       }
-    }
 
-    parsed.push({
-      question: questionText,
-      options,
-      answer,
-      answerType,
-      explanation,
-      rawBlock: block
+      const questionPart = lines.slice(0, answerIdx);
+      if (!questionPart.length) return;
+
+      // 문제 라인: "보기:"가 나오기 전까지를 문제로 취급
+      let qLines = [];
+      let optLines = [];
+      let seenOptionZone = false;
+
+      questionPart.forEach(line => {
+        if (/^보기\s*[:：]/.test(line)) {
+          seenOptionZone = true;
+          optLines.push(line);
+          return;
+        }
+        if (seenOptionZone) optLines.push(line);
+        else qLines.push(line);
+      });
+
+      let questionText = qLines.join(' ').replace(/^문제\s*[:：]\s*/,'').trim();
+      if (!questionText) return;
+
+      let options = [];
+
+      const joinedOpt = optLines
+        .join(' ')
+        .replace(/^보기\s*[:：]\s*/,'')
+        .replace(/\s+/g,' ')
+        .trim();
+
+      if (joinedOpt) {
+        const reg = /(\d+)\)\s*([^]*?)(?=(?:\s+\d+\)\s*)|$)/g;
+        let m;
+        while ((m = reg.exec(joinedOpt)) !== null) {
+          const txt = (m[2] || '').trim();
+          if (txt) options.push(txt);
+        }
+      }
+
+      if (options.length < 2 && optLines.length) {
+        optLines.forEach(l => {
+          const s = l.replace(/^보기\s*[:：]\s*/,'').trim();
+          let mm = s.match(/^(\d+)[\.\)\-\s]\s*(.+)$/);
+          if (mm) options.push(mm[2].trim());
+          else {
+            const first = s.charAt(0);
+            const num = circledToNumber(first);
+            if (num != null) options.push(s.slice(1).trim());
+          }
+        });
+      }
+
+      let answerType = 'subjective';
+      let answer = answerRaw;
+
+      if (options.length >= 2) {
+        answerType = 'objective';
+        let nm = answerRaw.match(/(\d+)/);
+        if (nm) answer = Number(nm[1]);
+        else {
+          const c = circledToNumber(answerRaw.trim().charAt(0));
+          if (c != null) answer = c;
+        }
+      }
+
+      parsed.push({
+        question: questionText,
+        options,
+        answer,
+        answerType,
+        explanation,
+        rawBlock: block
+      });
     });
-  });
 
-  return parsed;
-}
+    return parsed;
+  }
 
   /* ================================
      키워드 후보 추출 (STOPWORDS 적용)
   ================================ */
   function buildKeywordCandidates(problems) {
     const stopWords = new Set([
-      // 기본/공통 스톱워드
       '다음','다음의','다음중','다음중에서','다음은','다음에','다음사항','중','다','것은','어느','옳은',
       '옳지','않은','아닌','설명으로','설명','관련된','관련하여','가장','보기','대한','및','또는','있는',
       '없는','사항','기출','문제','하며','주를','에서','으로','그리고','또한','때문에','통해','인해',
@@ -712,8 +751,6 @@ function stripLeadingNumberPrefix(name) {
       '변하지','이루어진','되는','것이므로','무관하다','나타나는','나타날','보여주는','중에서','중인',
       '포함되지','포함된다','일시적으로','먼저','보다','아직','이미','모두','일반적인','일반적으로',
       '적절하지','필요한','필수','가능한','즉시','함께','없다','없으므로','어떤','어떻게','포함','왜',
-
-      // 추가 요청 스톱워드(네가 넣어둔 것 유지)
       '회기출','원이다','원을','원에','하였다','한다','하지','않습니다','아닙니다','것이','크게','잘못',
       '못한','그럼','이전','현재','미래','일부','나머지는','말한다','특정','상태를','상태','목적으로',
       '목적적합성과','목적적','기초','기말','기초자본','기말자본','내에','년의','년을','년에','년간',
@@ -761,8 +798,6 @@ function stripLeadingNumberPrefix(name) {
 
   /* ================================
      키워드 리스트 렌더링
-     - name="keywordCandidate"
-     - 초기엔 체크 없음
   ================================ */
   function renderKeywordList(keywordMapObj) {
     keywordListEl.innerHTML = '';
@@ -786,7 +821,7 @@ function stripLeadingNumberPrefix(name) {
       const chk = document.createElement('input');
       chk.type = 'checkbox';
       chk.value = key;
-      chk.checked = false;              // 처음엔 전부 해제
+      chk.checked = false;
       chk.name = 'keywordCandidate';
 
       const txt = document.createElement('span');
@@ -803,7 +838,7 @@ function stripLeadingNumberPrefix(name) {
   }
 
   /* ================================
-     진행률 업데이트(상단 바 + 카드 내부)
+     진행률 업데이트
   ================================ */
   function updateProgressUI() {
     if (!problems || !problems.length) {
@@ -841,7 +876,7 @@ function stripLeadingNumberPrefix(name) {
     const p = problems[currentIndex];
 
     const cleanQuestion = normalizeTitlePrefix(p.question);
-questionTextEl.innerHTML = formatQuestionText(cleanQuestion);
+    questionTextEl.innerHTML = formatQuestionText(cleanQuestion);
 
     answerArea.innerHTML = '';
     answerStatus.textContent = '';
@@ -928,8 +963,6 @@ questionTextEl.innerHTML = formatQuestionText(cleanQuestion);
     setModePill('완료');
     setTopProgressText('결과 화면', `${total}문제`);
     setTopProgressPercent(100);
-
-
   }
 
   /* ================================
@@ -963,16 +996,15 @@ questionTextEl.innerHTML = formatQuestionText(cleanQuestion);
         fileSelect.innerHTML = '';
         const metaList = txtFiles.map(f => ({ name: f.name, path: f.path }));
 
-metaList.forEach((item, idx) => {
-  const opt = document.createElement('option');
-  opt.value = String(idx);
+        metaList.forEach((item, idx) => {
+          const opt = document.createElement('option');
+          opt.value = String(idx);
 
-  const cleaned = stripLeadingNumberPrefix(item.name); // ✅ 여기!
-  opt.textContent = `${idx + 1}. ${cleaned}`;
+          const cleaned = stripLeadingNumberPrefix(item.name);
+          opt.textContent = `${idx + 1}. ${cleaned}`;
 
-  fileSelect.appendChild(opt);
-});
-
+          fileSelect.appendChild(opt);
+        });
 
         fileSelect.dataset.files = JSON.stringify(metaList);
         fileSelect.disabled = false;
@@ -1145,7 +1177,7 @@ metaList.forEach((item, idx) => {
     });
 
     /* =====================================
-       키워드별 풀기 (선택 키워드 합집합)
+       키워드별 풀기
     ===================================== */
     keywordQuizBtn.addEventListener("click", () => {
       if (!keywordMap) {
@@ -1168,7 +1200,6 @@ metaList.forEach((item, idx) => {
         return;
       }
 
-      // 합집합(중복 제거)
       const idxSet = new Set();
       selectedKeys.forEach(key => {
         (keywordMap[key] || []).forEach(i => idxSet.add(i));
@@ -1180,7 +1211,6 @@ metaList.forEach((item, idx) => {
         return;
       }
 
-      // 셔플
       for (let i = indices.length - 1; i > 0; i--) {
         const k = Math.floor(Math.random() * (i + 1));
         [indices[i], indices[k]] = [indices[k], indices[i]];
@@ -1216,7 +1246,6 @@ metaList.forEach((item, idx) => {
       solvedCount = 0;
       wrongList = [];
 
-      // ✅ 표시용 키워드 라벨(너무 길어지지 않게)
       const keywordLabel =
         selectedKeys.length <= 3
           ? selectedKeys.join(", ")
@@ -1294,18 +1323,14 @@ metaList.forEach((item, idx) => {
       nextQuestionBtn.disabled = false;
       nextQuestionBtn.textContent =
         currentIndex === problems.length - 1 ? "결과 보기" : "다음 문제 ▶";
-      // ✅ 채점 후 해설(answerStatus) 위치로 자동 스크롤 (모바일 친화)
-setTimeout(() => {
-  answerStatus.scrollIntoView({ behavior: "smooth", block: "start" });
 
-  // iOS 사파리에서 상단이 살짝 가려질 때를 대비한 미세 보정
-  setTimeout(() => {
-    window.scrollBy({ top: -10, left: 0, behavior: "smooth" });
-  }, 250);
-}, 50);
+      setTimeout(() => {
+        answerStatus.scrollIntoView({ behavior: "smooth", block: "start" });
+        setTimeout(() => {
+          window.scrollBy({ top: -10, left: 0, behavior: "smooth" });
+        }, 250);
+      }, 50);
 
-
-      // 제출 후 진행률은 그대로(다음 문제로 넘어갈 때 증가)
       updateProgressUI();
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
@@ -1324,7 +1349,7 @@ setTimeout(() => {
     });
 
     /* =====================================
-       오답노트 다운로드 (한글 깨짐 방지: UTF-8 BOM)
+       오답노트 다운로드
     ===================================== */
     downloadWrongBtn.addEventListener("click", () => {
       if (!wrongList.length) return alert("오답이 없습니다.");
@@ -1363,7 +1388,7 @@ setTimeout(() => {
         lines.push("");
       });
 
-      const BOM = "\uFEFF"; // UTF-8 BOM (한글 깨짐 방지)
+      const BOM = "\uFEFF";
       const blob = new Blob([BOM + lines.join("\n")], { type: "text/plain;charset=utf-8" });
       const url = URL.createObjectURL(blob);
 
@@ -1382,7 +1407,7 @@ setTimeout(() => {
     });
 
     /* =====================================
-       다시 시작 (처음 화면)
+       다시 시작
     ===================================== */
     restartBtn.addEventListener("click", () => {
       setupCard.style.display = "block";
@@ -1402,7 +1427,7 @@ setTimeout(() => {
     });
 
     /* =====================================
-       🔎 키워드 검색 기능 (null 방지)
+       🔎 키워드 검색
     ===================================== */
     if (keywordSearchInput) {
       keywordSearchInput.addEventListener('input', () => {
@@ -1416,7 +1441,7 @@ setTimeout(() => {
     }
 
     /* =====================================
-       ✅ 전체선택/해제 체크박스 (null 방지)
+       ✅ 전체선택/해제
     ===================================== */
     if (keywordSelectAll) {
       keywordSelectAll.addEventListener('change', () => {
@@ -1432,7 +1457,7 @@ setTimeout(() => {
     }
 
     /* =====================================
-       최초 실행 시 TXT 파일 목록 로딩
+       최초 실행: 목록 로딩
     ===================================== */
     loadProblemFilesList();
   });
