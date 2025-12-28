@@ -557,128 +557,162 @@ function stripLeadingNumberPrefix(name) {
      TXT → 문제 파싱
   ================================ */
   function parseProblems(text) {
-    const blocks = text
+  // 줄바꿈 통일
+  const raw = String(text || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
+  // "문제:" 시작점 기준으로 블록 분리 (빈 줄 분리보다 훨씬 안정적)
+  const starts = [];
+  const lines = raw.split("\n");
+
+  for (let i = 0; i < lines.length; i++) {
+    if (/^\s*문제\s*[:：]/.test(lines[i])) starts.push(i);
+  }
+
+  // 문제: 라인이 하나도 없으면 기존 방식(빈줄 분리)로 fallback
+  if (!starts.length) {
+    const blocks = raw
       .split(/\n\s*\n/g)
       .map(b => b.trim())
-      .filter(b => b.length > 0);
+      .filter(Boolean);
 
-    const parsed = [];
+    // 기존 로직 최소 fallback: 정답 라인 있는 블록만
+    return blocks.map(block => {
+      const lns = block.split("\n").map(s => s.trim()).filter(Boolean);
+      const ansLineIdx = lns.findIndex(v => /^정답\s*[:：]/.test(v));
+      if (ansLineIdx < 0) return null;
 
-    blocks.forEach(block => {
-      const lines = block.split('\n')
-        .map(l => l.trim())
-        .filter(l => l !== '');
+      const qPart = lns.slice(0, ansLineIdx).join("\n");
+      const ansPart = lns[ansLineIdx].replace(/^정답\s*[:：]\s*/,"").trim();
 
-      if (!lines.length) return;
+      return {
+        question: qPart,
+        options: [],
+        answer: ansPart,
+        answerType: "subjective",
+        explanation: "",
+        rawBlock: block
+      };
+    }).filter(Boolean);
+  }
 
-      let answerIdx = -1;
-      let answerRaw = '';
-      let explanation = '';
+  // starts 기준으로 블록 만들기
+  const blocks = [];
+  for (let s = 0; s < starts.length; s++) {
+    const from = starts[s];
+    const to = (s + 1 < starts.length) ? starts[s + 1] : lines.length;
+    const blockLines = lines.slice(from, to);
 
-      // 정답 라인 찾기
-      lines.forEach((line, i) => {
-        const m = line.match(/^정답\s*[:：]\s*(.+)$/);
-        if (m) {
-          answerIdx = i;
-          const ansPart = m[1].trim();
+    // 앞/뒤 공백라인 제거
+    while (blockLines.length && !blockLines[0].trim()) blockLines.shift();
+    while (blockLines.length && !blockLines[blockLines.length - 1].trim()) blockLines.pop();
 
-          const expMatch = ansPart.match(/해설\s*[:：]\s*(.+)$/);
-          if (expMatch) {
-            explanation = expMatch[1].trim();
-            answerRaw = ansPart.slice(0, expMatch.index).trim();
-          } else {
-            answerRaw = ansPart;
-          }
-        }
-      });
+    const block = blockLines.join("\n").trim();
+    if (block) blocks.push(block);
+  }
 
-      if (answerIdx === -1) return;
+  const parsed = [];
 
-      // 해설이 별도로 있는 경우
-      if (!explanation && answerIdx + 1 < lines.length) {
-        const nxt = lines[answerIdx + 1];
-        const m2 = nxt.match(/^해설\s*[:：]\s*(.+)$/);
-        if (m2) {
-          explanation = m2[1].trim();
-        } else {
-          const rest = lines.slice(answerIdx + 1).join('\n').trim();
-          if (rest) explanation = rest;
-        }
-      }
+  for (const block of blocks) {
+    const lns = block.split("\n");
 
-      const questionPart = lines.slice(0, answerIdx);
-      if (!questionPart.length) return;
+    // 섹션 찾기 (문제/보기/정답/해설)
+    const idxQ = lns.findIndex(v => /^\s*문제\s*[:：]/.test(v));
+    const idxO = lns.findIndex(v => /^\s*보기\s*[:：]/.test(v));
+    const idxA = lns.findIndex(v => /^\s*정답\s*[:：]/.test(v));
+    const idxE = lns.findIndex(v => /^\s*해설\s*[:：]/.test(v));
 
-      const questionLine = questionPart[0];
-      const optionLines = questionPart.slice(1);
+    if (idxQ < 0 || idxA < 0) continue; // 최소 조건: 문제/정답
 
-      // 보기 파싱
-      let options = [];
+    // ---- 문제 본문: "문제:" 라인 + 그 다음 라인들(보기/정답 나오기 전까지)
+    const qStartLine = lns[idxQ].replace(/^\s*문제\s*[:：]\s*/, "");
+    const qEnd = [idxO, idxA, idxE].filter(i => i >= 0).reduce((m, v) => Math.min(m, v), lns.length);
 
-      // 줄 단위 1)
-      optionLines.forEach(l => {
-        const m = l.match(/^(\d+)[\.\)\-\s]\s*(.+)$/);
-        if (m) {
-          options.push(m[2].trim());
-          return;
-        }
+    const qBodyLines = [qStartLine, ...lns.slice(idxQ + 1, qEnd)]
+      .map(v => v.replace(/\s+$/,""))
+      .filter(v => v !== undefined);
+
+    const questionText = qBodyLines.join("\n").trim();
+
+    // ---- 보기: "보기:" 이후 ~ 정답 전까지
+    let options = [];
+    if (idxO >= 0 && idxO < idxA) {
+      const oLines = lns.slice(idxO + 1, idxA).map(v => v.trim()).filter(Boolean);
+
+      // 1) 줄 단위 1) / 1. / ①
+      oLines.forEach(l => {
+        let m = l.match(/^(\d+)[\.\)\-\s]\s*(.+)$/);
+        if (m) { options.push(m[2].trim()); return; }
+
         const first = l.charAt(0);
         const num = circledToNumber(first);
-        if (num != null) {
-          options.push(l.slice(1).trim());
-        }
+        if (num != null) { options.push(l.slice(1).trim()); return; }
       });
 
-      // 한 줄 속성 1) 2) 3)
-      if (options.length <= 1 && optionLines.length > 0) {
-        const joined = optionLines.join(' ').replace(/\s+/g, ' ').trim();
+      // 2) 한 줄에 1) 2) 3) 붙는 경우 보정
+      if (options.length <= 1 && oLines.length) {
+        const joined = oLines.join(" ").replace(/\s+/g, " ").trim();
         const markReg = /(①|②|③|④|⑤|⑥|⑦|⑧|⑨|[1-9]\))/g;
 
         let markers = [];
-        let m;
-        while ((m = markReg.exec(joined)) !== null) {
-          markers.push({ index: m.index, token: m[0] });
+        let mm;
+        while ((mm = markReg.exec(joined)) !== null) {
+          markers.push({ index: mm.index, token: mm[0] });
         }
 
         if (markers.length >= 2) {
-          let inline = [];
+          const inline = [];
           for (let i = 0; i < markers.length; i++) {
             const start = markers[i].index + markers[i].token.length;
-            const end = i + 1 < markers.length ? markers[i+1].index : joined.length;
-            const txt = joined.slice(start, end).replace(/^[:\.\-\s]+/, '').trim();
+            const end = (i + 1 < markers.length) ? markers[i + 1].index : joined.length;
+            const txt = joined.slice(start, end).replace(/^[:\.\-\s]+/, "").trim();
             if (txt) inline.push(txt);
           }
           if (inline.length >= 2) options = inline;
         }
       }
+    }
 
-      // 정답 판별
-      let answerType = 'subjective';
-      let answer = answerRaw;
+    // ---- 정답
+    const answerRaw = lns[idxA].replace(/^\s*정답\s*[:：]\s*/, "").trim();
 
-      if (options.length > 1) {
-        answerType = 'objective';
-        let nm = answerRaw.match(/(\d+)/);
-        if (nm) {
-          answer = Number(nm[1]);
-        } else {
-          const c = circledToNumber(answerRaw.trim().charAt(0));
-          if (c != null) answer = c;
-        }
+    // ---- 해설: "해설:" 라인부터 끝까지(또는 다음 문제는 이미 블록 분리됨)
+    let explanation = "";
+    if (idxE >= 0) {
+      const first = lns[idxE].replace(/^\s*해설\s*[:：]\s*/, "");
+      const rest = lns.slice(idxE + 1);
+      explanation = [first, ...rest].join("\n").trim();
+    } else {
+      // 정답 다음 줄들 전체를 해설로 인정(정답만 있고 해설 라벨 없는 파일 대응)
+      const rest = lns.slice(idxA + 1).join("\n").trim();
+      if (rest) explanation = rest;
+    }
+
+    // ---- 답안 타입 결정
+    let answerType = "subjective";
+    let answer = answerRaw;
+
+    if (options.length > 1) {
+      answerType = "objective";
+      const nm = answerRaw.match(/(\d+)/);
+      if (nm) answer = Number(nm[1]);
+      else {
+        const c = circledToNumber(answerRaw.trim().charAt(0));
+        if (c != null) answer = c;
       }
+    }
 
-      parsed.push({
-        question: questionLine,
-        options,
-        answer,
-        answerType,
-        explanation,
-        rawBlock: block
-      });
+    parsed.push({
+      question: questionText,   // ✅ 이제 줄바꿈 포함 전체 본문 유지
+      options,
+      answer,
+      answerType,
+      explanation,
+      rawBlock: block
     });
-
-    return parsed;
   }
+
+  return parsed;
+}
 
   /* ================================
      키워드 후보 추출 (STOPWORDS 적용)
@@ -915,7 +949,7 @@ questionTextEl.innerHTML = formatQuestionText(cleanQuestion);
     setTopProgressText('결과 화면', `${total}문제`);
     setTopProgressPercent(100);
 
-    window.scrollTo({ top: 0, behavior: "smooth" });
+
   }
 
   /* ================================
